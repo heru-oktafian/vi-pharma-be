@@ -1,0 +1,42 @@
+package utils
+
+import (
+	"crypto/rand"
+	"math/big"
+)
+
+const charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+// generateIDWithPrefix generates a 15-character unique identifier with a 3-character prefix
+func generateIDWithPrefix(prefix string) string {
+	const randomPartLength = 12 // 3 + 12 = 15 characters total
+
+	result := make([]byte, randomPartLength)
+	charsetLen := big.NewInt(int64(len(charset)))
+
+	for i := 0; i < randomPartLength; i++ {
+		num, err := rand.Int(rand.Reader, charsetLen)
+		if err != nil {
+			result[i] = charset[i%len(charset)]
+		} else {
+			result[i] = charset[num.Int64()]
+		}
+	}
+
+	return prefix + string(result)
+}
+
+// GenerateUserID generates a 15-character unique identifier for users (prefix "USR")
+func GenerateUserID() string {
+	return generateIDWithPrefix("USR")
+}
+
+// GenerateBranchID generates a 15-character unique identifier for branches (prefix "CBG")
+func GenerateBranchID() string {
+	return generateIDWithPrefix("CBG")
+}
+
+// GenerateUserBranchID generates a 15-character unique identifier for user_branches (prefix "UBR")
+func GenerateUserBranchID() string {
+	return generateIDWithPrefix("UBR")
+}

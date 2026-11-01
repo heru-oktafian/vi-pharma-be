@@ -1,0 +1,25 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+api
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Dependency & test files
+*.test
+*.out
+vendor/
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
