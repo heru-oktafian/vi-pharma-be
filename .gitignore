@@ -5,7 +5,7 @@
 *.so
 *.dylib
 bin/
-api
+/api
 
 # Environment files
 .env
