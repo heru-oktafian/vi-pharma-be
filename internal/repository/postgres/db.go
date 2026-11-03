@@ -368,6 +368,15 @@ func seedInitialData(db *gorm.DB) {
 			StorageLocation:      "Rak A-01",
 			DefaultSupplierID:    &pbf1ID,
 			IsActive:             true,
+			LabelType:            "dalam",
+			DefaultSigna:         "3 x Sehari 1 Kaplet (Tiap 8 Jam)",
+			ConsumptionTime:      "Sesudah Makan",
+			DoseMorning:          "1",
+			DoseNoon:             "1",
+			DoseNight:            "1",
+			WarningTags:          "Harus Dihabiskan (Antibiotik)",
+			SpecialInstructions:  "Wajib dihabiskan untuk mencegah resistensi antibiotik",
+			BUDDays:              0,
 		}
 		_ = db.Create(&med1).Error
 
@@ -413,6 +422,15 @@ func seedInitialData(db *gorm.DB) {
 			StorageLocation:      "Rak B-02 (OTC)",
 			DefaultSupplierID:    &pbf1ID,
 			IsActive:             true,
+			LabelType:            "dalam",
+			DefaultSigna:         "3 x Sehari 1 Kaplet",
+			ConsumptionTime:      "Sesudah Makan (Bila Demam / Sakit)",
+			DoseMorning:          "1",
+			DoseNoon:             "1",
+			DoseNight:            "1",
+			WarningTags:          "Hentikan jika demam reda",
+			SpecialInstructions:  "Hati-hati penggunaan jangka panjang tanpa resep dokter",
+			BUDDays:              0,
 		}
 		_ = db.Create(&med2).Error
 
@@ -454,6 +472,15 @@ func seedInitialData(db *gorm.DB) {
 			StorageLocation:      "Rak Sirup Anak C-01",
 			DefaultSupplierID:    &pbf1ID,
 			IsActive:             true,
+			LabelType:            "dalam",
+			DefaultSigna:         "3 x Sehari 1 Sendok Takar (5 ml)",
+			ConsumptionTime:      "Sesudah Makan",
+			DoseMorning:          "5 ml",
+			DoseNoon:             "5 ml",
+			DoseNight:            "5 ml",
+			WarningTags:          "Kocok Dahulu",
+			SpecialInstructions:  "Gunakan sendok takar obat resmi yang tersedia di kemasan",
+			BUDDays:              30,
 		}
 		_ = db.Create(&med3).Error
 

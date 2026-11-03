@@ -99,6 +99,24 @@ func (u *medicineUsecase) CreateMedicine(ctx context.Context, req *domain.Create
 		isActive = *req.IsActive
 	}
 
+	labelType := req.LabelType
+	if labelType == "" {
+		labelType = "dalam"
+	}
+
+	doseMorning := req.DoseMorning
+	if doseMorning == "" {
+		doseMorning = "1"
+	}
+	doseNoon := req.DoseNoon
+	if doseNoon == "" {
+		doseNoon = "1"
+	}
+	doseNight := req.DoseNight
+	if doseNight == "" {
+		doseNight = "1"
+	}
+
 	medicineID := utils.GenerateMedicineID()
 	medicine := &domain.Medicine{
 		ID:                   medicineID,
@@ -118,6 +136,15 @@ func (u *medicineUsecase) CreateMedicine(ctx context.Context, req *domain.Create
 		StorageLocation:      req.StorageLocation,
 		DefaultSupplierID:    req.DefaultSupplierID,
 		IsActive:             isActive,
+		LabelType:            labelType,
+		DefaultSigna:         req.DefaultSigna,
+		ConsumptionTime:      req.ConsumptionTime,
+		DoseMorning:          doseMorning,
+		DoseNoon:             doseNoon,
+		DoseNight:            doseNight,
+		WarningTags:          req.WarningTags,
+		SpecialInstructions:  req.SpecialInstructions,
+		BUDDays:              req.BUDDays,
 		CreatedAt:            time.Now(),
 		UpdatedAt:            time.Now(),
 	}
@@ -207,6 +234,17 @@ func (u *medicineUsecase) UpdateMedicine(ctx context.Context, id string, req *do
 	if req.IsActive != nil {
 		medicine.IsActive = *req.IsActive
 	}
+	if req.LabelType != "" {
+		medicine.LabelType = req.LabelType
+	}
+	medicine.DefaultSigna = req.DefaultSigna
+	medicine.ConsumptionTime = req.ConsumptionTime
+	medicine.DoseMorning = req.DoseMorning
+	medicine.DoseNoon = req.DoseNoon
+	medicine.DoseNight = req.DoseNight
+	medicine.WarningTags = req.WarningTags
+	medicine.SpecialInstructions = req.SpecialInstructions
+	medicine.BUDDays = req.BUDDays
 	medicine.UpdatedAt = time.Now()
 
 	units := make([]domain.MedicineUnit, 0)

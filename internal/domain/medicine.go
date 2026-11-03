@@ -31,6 +31,14 @@ const (
 	PriceTypeMember PriceType = "member" // Pelanggan / member apotek
 )
 
+// LabelType represents pharmacy dispensing label categories (Etiket)
+type LabelType string
+
+const (
+	LabelTypeDalam LabelType = "dalam" // Etiket Putih (Obat Dalam / Oral)
+	LabelTypeLuar  LabelType = "luar"  // Etiket Biru (Obat Luar / Topikal / Tetes / Inhalasi)
+)
+
 // Medicine represents a pharmaceutical drug or medical product
 type Medicine struct {
 	ID                   string             `gorm:"type:varchar(15);primaryKey" json:"id"`
@@ -53,6 +61,18 @@ type Medicine struct {
 	DefaultSupplierID    *string            `gorm:"type:varchar(15)" json:"default_supplier_id"`
 	DefaultSupplier      *Supplier          `gorm:"foreignKey:DefaultSupplierID" json:"default_supplier,omitempty"`
 	IsActive             bool               `gorm:"not null;default:true;index" json:"is_active"`
+
+	// Etiket & Aturan Pakai (Dispensing Regulation & Etiket Print Support)
+	LabelType           string             `gorm:"type:varchar(20);not null;default:'dalam'" json:"label_type"` // dalam / luar
+	DefaultSigna        string             `gorm:"type:varchar(150)" json:"default_signa"`                      // e.g. "3 x Sehari 1 Tablet"
+	ConsumptionTime     string             `gorm:"type:varchar(100)" json:"consumption_time"`                   // e.g. "Sesudah Makan"
+	DoseMorning         string             `gorm:"type:varchar(50);default:'1'" json:"dose_morning"`            // e.g. "1"
+	DoseNoon            string             `gorm:"type:varchar(50);default:'1'" json:"dose_noon"`               // e.g. "1"
+	DoseNight           string             `gorm:"type:varchar(50);default:'1'" json:"dose_night"`              // e.g. "1"
+	WarningTags         string             `gorm:"type:text" json:"warning_tags"`                               // e.g. "Harus Dihabiskan,Kocok Dahulu"
+	SpecialInstructions string             `gorm:"type:text" json:"special_instructions"`                       // e.g. "Larutkan dalam 1 gelas air"
+	BUDDays             int                `gorm:"not null;default:0" json:"bud_days"`                          // Beyond Use Date in days
+
 	Units                []MedicineUnit     `gorm:"foreignKey:MedicineID" json:"units,omitempty"`
 	Prices               []MedicinePrice    `gorm:"foreignKey:MedicineID" json:"prices,omitempty"`
 	CreatedAt            time.Time          `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
@@ -115,6 +135,15 @@ type CreateMedicineRequest struct {
 	StorageLocation      string               `json:"storage_location"`
 	DefaultSupplierID    *string              `json:"default_supplier_id"`
 	IsActive             *bool                `json:"is_active"`
+	LabelType            string               `json:"label_type"`
+	DefaultSigna         string               `json:"default_signa"`
+	ConsumptionTime      string               `json:"consumption_time"`
+	DoseMorning          string               `json:"dose_morning"`
+	DoseNoon             string               `json:"dose_noon"`
+	DoseNight            string               `json:"dose_night"`
+	WarningTags          string               `json:"warning_tags"`
+	SpecialInstructions  string               `json:"special_instructions"`
+	BUDDays              int                  `json:"bud_days"`
 	Units                []MedicineUnitInput  `json:"units"`
 	Prices               []MedicinePriceInput `json:"prices"`
 }
@@ -136,6 +165,15 @@ type UpdateMedicineRequest struct {
 	StorageLocation      string               `json:"storage_location"`
 	DefaultSupplierID    *string              `json:"default_supplier_id"`
 	IsActive             *bool                `json:"is_active"`
+	LabelType            string               `json:"label_type"`
+	DefaultSigna         string               `json:"default_signa"`
+	ConsumptionTime      string               `json:"consumption_time"`
+	DoseMorning          string               `json:"dose_morning"`
+	DoseNoon             string               `json:"dose_noon"`
+	DoseNight            string               `json:"dose_night"`
+	WarningTags          string               `json:"warning_tags"`
+	SpecialInstructions  string               `json:"special_instructions"`
+	BUDDays              int                  `json:"bud_days"`
 	Units                []MedicineUnitInput  `json:"units"`
 	Prices               []MedicinePriceInput `json:"prices"`
 }
@@ -170,6 +208,18 @@ type MedicineResponse struct {
 	DefaultSupplierID    *string            `json:"default_supplier_id,omitempty"`
 	DefaultSupplierName  string             `json:"default_supplier_name,omitempty"`
 	IsActive             bool               `json:"is_active"`
+
+	// Etiket & Aturan Pakai
+	LabelType           string             `json:"label_type"`
+	DefaultSigna        string             `json:"default_signa"`
+	ConsumptionTime     string             `json:"consumption_time"`
+	DoseMorning         string             `json:"dose_morning"`
+	DoseNoon            string             `json:"dose_noon"`
+	DoseNight           string             `json:"dose_night"`
+	WarningTags         string             `json:"warning_tags"`
+	SpecialInstructions string             `json:"special_instructions"`
+	BUDDays             int                `json:"bud_days"`
+
 	Units                []MedicineUnit     `json:"units,omitempty"`
 	Prices               []MedicinePrice    `json:"prices,omitempty"`
 	CreatedAt            time.Time          `json:"created_at"`
@@ -203,6 +253,15 @@ func (m *Medicine) ToResponse() *MedicineResponse {
 		StorageLocation:      m.StorageLocation,
 		DefaultSupplierID:    m.DefaultSupplierID,
 		IsActive:             m.IsActive,
+		LabelType:            m.LabelType,
+		DefaultSigna:         m.DefaultSigna,
+		ConsumptionTime:      m.ConsumptionTime,
+		DoseMorning:          m.DoseMorning,
+		DoseNoon:             m.DoseNoon,
+		DoseNight:            m.DoseNight,
+		WarningTags:          m.WarningTags,
+		SpecialInstructions:  m.SpecialInstructions,
+		BUDDays:              m.BUDDays,
 		Units:                m.Units,
 		Prices:               m.Prices,
 		CreatedAt:            m.CreatedAt,
