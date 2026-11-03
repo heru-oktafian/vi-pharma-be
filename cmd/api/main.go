@@ -43,6 +43,12 @@ func main() {
 	branchRepo := postgres.NewBranchRepository(db)
 	qrSessionStore := memory.NewQRSessionStore()
 
+	unitRepo := postgres.NewUnitRepository(db)
+	categoryRepo := postgres.NewCategoryRepository(db)
+	supplierRepo := postgres.NewSupplierRepository(db)
+	doctorRepo := postgres.NewDoctorRepository(db)
+	medicineRepo := postgres.NewMedicineRepository(db)
+
 	// 4. Initialize WebSocket Hub
 	wsHub := ws.NewHub()
 
@@ -52,11 +58,23 @@ func main() {
 	userUsecase := usecase.NewUserUsecase(userRepo)
 	branchUsecase := usecase.NewBranchUsecase(branchRepo)
 
+	unitUsecase := usecase.NewUnitUsecase(unitRepo)
+	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo)
+	supplierUsecase := usecase.NewSupplierUsecase(supplierRepo)
+	doctorUsecase := usecase.NewDoctorUsecase(doctorRepo)
+	medicineUsecase := usecase.NewMedicineUsecase(medicineRepo, categoryRepo, unitRepo)
+
 	// 6. Initialize HTTP & WebSocket Handlers
 	authHandler := handler.NewAuthHandler(authUsecase)
 	qrAuthHandler := handler.NewQRAuthHandler(qrAuthUsecase, wsHub)
 	userHandler := handler.NewUserHandler(userUsecase)
 	branchHandler := handler.NewBranchHandler(branchUsecase)
+
+	unitHandler := handler.NewUnitHandler(unitUsecase)
+	categoryHandler := handler.NewCategoryHandler(categoryUsecase)
+	supplierHandler := handler.NewSupplierHandler(supplierUsecase)
+	doctorHandler := handler.NewDoctorHandler(doctorUsecase)
+	medicineHandler := handler.NewMedicineHandler(medicineUsecase)
 
 	// 7. Initialize Fiber Web App
 	app := fiber.New(fiber.Config{
@@ -81,7 +99,19 @@ func main() {
 	app.Use(middleware.RequestLogger())
 
 	// 8. Setup Routes
-	route.SetupRoutes(app, cfg, authHandler, qrAuthHandler, userHandler, branchHandler)
+	route.SetupRoutes(
+		app,
+		cfg,
+		authHandler,
+		qrAuthHandler,
+		userHandler,
+		branchHandler,
+		unitHandler,
+		categoryHandler,
+		supplierHandler,
+		doctorHandler,
+		medicineHandler,
+	)
 
 	// 9. Graceful Shutdown Handler
 	quit := make(chan os.Signal, 1)

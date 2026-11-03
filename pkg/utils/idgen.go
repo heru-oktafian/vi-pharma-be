@@ -40,3 +40,38 @@ func GenerateBranchID() string {
 func GenerateUserBranchID() string {
 	return generateIDWithPrefix("UBR")
 }
+
+// GenerateUnitID generates a 15-character unique identifier for units (prefix "UNT")
+func GenerateUnitID() string {
+	return generateIDWithPrefix("UNT")
+}
+
+// GenerateCategoryID generates a 15-character unique identifier for categories (prefix "CAT")
+func GenerateCategoryID() string {
+	return generateIDWithPrefix("CAT")
+}
+
+// GenerateSupplierID generates a 15-character unique identifier for suppliers/PBF (prefix "SUP")
+func GenerateSupplierID() string {
+	return generateIDWithPrefix("SUP")
+}
+
+// GenerateDoctorID generates a 15-character unique identifier for doctors (prefix "DOC")
+func GenerateDoctorID() string {
+	return generateIDWithPrefix("DOC")
+}
+
+// GenerateMedicineID generates a 15-character unique identifier for medicines (prefix "MED")
+func GenerateMedicineID() string {
+	return generateIDWithPrefix("MED")
+}
+
+// GenerateMedicineUnitID generates a 15-character unique identifier for medicine units (prefix "MNU")
+func GenerateMedicineUnitID() string {
+	return generateIDWithPrefix("MNU")
+}
+
+// GenerateMedicinePriceID generates a 15-character unique identifier for medicine prices (prefix "MPR")
+func GenerateMedicinePriceID() string {
+	return generateIDWithPrefix("MPR")
+}

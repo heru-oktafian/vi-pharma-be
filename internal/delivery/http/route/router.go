@@ -18,6 +18,11 @@ func SetupRoutes(
 	qrAuthHandler *handler.QRAuthHandler,
 	userHandler *handler.UserHandler,
 	branchHandler *handler.BranchHandler,
+	unitHandler *handler.UnitHandler,
+	categoryHandler *handler.CategoryHandler,
+	supplierHandler *handler.SupplierHandler,
+	doctorHandler *handler.DoctorHandler,
+	medicineHandler *handler.MedicineHandler,
 ) {
 	api := app.Group("/api")
 	v1 := api.Group("/v1")
@@ -95,4 +100,54 @@ func SetupRoutes(
 			"branch_id": branchID,
 		})
 	})
+
+	// -------------------------------------------------------------
+	// 6. Master Data Farmasi (Protected by JWT)
+	// -------------------------------------------------------------
+
+	// 6.1 Units (Satuan)
+	units := v1.Group("/units")
+	units.Use(middleware.JWTProtected(cfg))
+	units.Get("", unitHandler.ListUnits)
+	units.Get("/:id", unitHandler.GetUnitByID)
+	units.Post("", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), unitHandler.CreateUnit)
+	units.Put("/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), unitHandler.UpdateUnit)
+	units.Delete("/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), unitHandler.DeleteUnit)
+
+	// 6.2 Categories (Kategori & Golongan Terapi)
+	categories := v1.Group("/categories")
+	categories.Use(middleware.JWTProtected(cfg))
+	categories.Get("", categoryHandler.ListCategories)
+	categories.Get("/:id", categoryHandler.GetCategoryByID)
+	categories.Post("", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), categoryHandler.CreateCategory)
+	categories.Put("/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), categoryHandler.UpdateCategory)
+	categories.Delete("/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), categoryHandler.DeleteCategory)
+
+	// 6.3 Suppliers / PBF (Pedagang Besar Farmasi)
+	suppliers := v1.Group("/suppliers")
+	suppliers.Use(middleware.JWTProtected(cfg))
+	suppliers.Get("", supplierHandler.ListSuppliers)
+	suppliers.Get("/:id", supplierHandler.GetSupplierByID)
+	suppliers.Post("", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), supplierHandler.CreateSupplier)
+	suppliers.Put("/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), supplierHandler.UpdateSupplier)
+	suppliers.Delete("/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), supplierHandler.DeleteSupplier)
+
+	// 6.4 Doctors (Dokter & Tenaga Medis)
+	doctors := v1.Group("/doctors")
+	doctors.Use(middleware.JWTProtected(cfg))
+	doctors.Get("", doctorHandler.ListDoctors)
+	doctors.Get("/:id", doctorHandler.GetDoctorByID)
+	doctors.Post("", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), doctorHandler.CreateDoctor)
+	doctors.Put("/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), doctorHandler.UpdateDoctor)
+	doctors.Delete("/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), doctorHandler.DeleteDoctor)
+
+	// 6.5 Medicines & Medical Supplies (Katalog Master Obat & Alkes)
+	medicines := v1.Group("/medicines")
+	medicines.Use(middleware.JWTProtected(cfg))
+	medicines.Get("", medicineHandler.ListMedicines)
+	medicines.Get("/barcode/:barcode", medicineHandler.GetMedicineByBarcode)
+	medicines.Get("/:id", medicineHandler.GetMedicineByID)
+	medicines.Post("", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), medicineHandler.CreateMedicine)
+	medicines.Put("/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), medicineHandler.UpdateMedicine)
+	medicines.Delete("/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), medicineHandler.DeleteMedicine)
 }
