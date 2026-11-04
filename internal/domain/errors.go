@@ -33,5 +33,8 @@ var (
 	ErrInvoiceNotFound            = errors.New("faktur pembelian tidak ditemukan")
 	ErrOpnameNotFound             = errors.New("sesi stok opname tidak ditemukan")
 	ErrOpnameAlreadyCompleted     = errors.New("sesi stok opname sudah selesai atau ditutup")
+	ErrPurchaseOrderNotFound      = errors.New("surat pesanan / purchase order tidak ditemukan")
+	ErrPOAlreadyProcessed         = errors.New("surat pesanan sudah diproses atau selesai dan tidak dapat diubah")
+	ErrNarcoticSingleItemOnly     = errors.New("surat pesanan narkotika resmi hanya boleh berisi 1 item obat per surat pesanan")
 	ErrInternalServer             = errors.New("internal server error")
 )

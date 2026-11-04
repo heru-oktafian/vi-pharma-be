@@ -25,6 +25,7 @@ func SetupRoutes(
 	doctorHandler *handler.DoctorHandler,
 	medicineHandler *handler.MedicineHandler,
 	inventoryHandler *handler.InventoryHandler,
+	procurementHandler *handler.ProcurementHandler,
 ) {
 	jwtAuth := middleware.JWTProtected(cfg, sessionStore)
 
@@ -196,4 +197,18 @@ func SetupRoutes(
 	inv.Post("/opnames/:id/submit", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.SubmitOpnameSession)
 	inv.Get("/opnames", inventoryHandler.ListOpnames)
 	inv.Get("/opnames/:id", inventoryHandler.GetOpnameDetail)
+
+	// -------------------------------------------------------------
+	// 8. Procurement & Purchase Orders (Pengadaan & Surat Pesanan)
+	// -------------------------------------------------------------
+	proc := v1.Group("/procurement")
+	proc.Use(jwtAuth)
+
+	// Purchase Orders / Surat Pesanan (SP)
+	proc.Post("/orders", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), procurementHandler.CreatePurchaseOrder)
+	proc.Get("/orders", procurementHandler.ListPurchaseOrders)
+	proc.Get("/orders/:id", procurementHandler.GetPurchaseOrderByID)
+	proc.Put("/orders/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), procurementHandler.UpdatePurchaseOrder)
+	proc.Patch("/orders/:id/status", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), procurementHandler.UpdatePOStatus)
+	proc.Delete("/orders/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), procurementHandler.DeletePurchaseOrder)
 }
