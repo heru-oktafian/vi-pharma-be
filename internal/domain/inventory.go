@@ -218,7 +218,9 @@ type CreateOpnameSessionRequest struct {
 
 type OpnameItemInput struct {
 	MedicineID  string  `json:"medicine_id" validate:"required"`
-	BatchID     string  `json:"batch_id" validate:"required"`
+	BatchID     string  `json:"batch_id"`
+	BatchNumber string  `json:"batch_number"`
+	ExpiredDate string  `json:"expired_date"`
 	PhysicalQty float64 `json:"physical_qty" validate:"gte=0"`
 	Notes       string  `json:"notes"`
 }

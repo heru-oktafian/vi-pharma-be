@@ -480,9 +480,36 @@ func (u *inventoryUsecase) CreateOpnameSession(
 
 	// Add initial items if provided in request
 	for _, it := range req.Items {
-		batch, err := u.invRepo.FindBatchByID(ctx, it.BatchID)
-		if err != nil {
-			continue
+		var batch *domain.MedicineBatch
+		if it.BatchID != "" {
+			batch, _ = u.invRepo.FindBatchByID(ctx, it.BatchID)
+		}
+		if batch == nil {
+			batchNo := it.BatchNumber
+			if batchNo == "" {
+				batchNo = "OPN-" + time.Now().Format("20060102")
+			}
+			expDate := time.Now().AddDate(1, 0, 0)
+			if it.ExpiredDate != "" {
+				if d, e := time.Parse("2006-01-02", it.ExpiredDate); e == nil {
+					expDate = d
+				}
+			}
+			existing, _ := u.invRepo.FindBatchByNumberAndMedicine(ctx, branchID, it.MedicineID, batchNo)
+			if existing != nil {
+				batch = existing
+			} else {
+				batch = &domain.MedicineBatch{
+					ID:          utils.GenerateBatchID(),
+					MedicineID:  it.MedicineID,
+					BranchID:    branchID,
+					BatchNumber: batchNo,
+					ExpiredDate: expDate,
+					IsActive:    true,
+				}
+				_ = u.invRepo.CreateBatch(ctx, batch)
+			}
+			it.BatchID = batch.ID
 		}
 
 		var sysQty float64
@@ -528,9 +555,38 @@ func (u *inventoryUsecase) SubmitOpnameSession(
 
 	// Process each counted item and adjust stock immediately
 	for _, it := range req.Items {
-		batch, err := u.invRepo.FindBatchByID(ctx, it.BatchID)
-		if err != nil {
-			continue
+		var batch *domain.MedicineBatch
+		if it.BatchID != "" {
+			batch, _ = u.invRepo.FindBatchByID(ctx, it.BatchID)
+		}
+		if batch == nil {
+			batchNo := it.BatchNumber
+			if batchNo == "" {
+				batchNo = "OPN-" + time.Now().Format("20060102")
+			}
+			expDate := time.Now().AddDate(1, 0, 0)
+			if it.ExpiredDate != "" {
+				if d, e := time.Parse("2006-01-02", it.ExpiredDate); e == nil {
+					expDate = d
+				}
+			}
+			existing, _ := u.invRepo.FindBatchByNumberAndMedicine(ctx, branchID, it.MedicineID, batchNo)
+			if existing != nil {
+				batch = existing
+			} else {
+				batch = &domain.MedicineBatch{
+					ID:          utils.GenerateBatchID(),
+					MedicineID:  it.MedicineID,
+					BranchID:    branchID,
+					BatchNumber: batchNo,
+					ExpiredDate: expDate,
+					IsActive:    true,
+				}
+				if err := u.invRepo.CreateBatch(ctx, batch); err != nil {
+					continue
+				}
+			}
+			it.BatchID = batch.ID
 		}
 
 		var sysQty float64
