@@ -14,6 +14,7 @@ import (
 func SetupRoutes(
 	app *fiber.App,
 	cfg *config.Config,
+	sessionStore domain.SessionStore,
 	authHandler *handler.AuthHandler,
 	qrAuthHandler *handler.QRAuthHandler,
 	userHandler *handler.UserHandler,
@@ -24,6 +25,8 @@ func SetupRoutes(
 	doctorHandler *handler.DoctorHandler,
 	medicineHandler *handler.MedicineHandler,
 ) {
+	jwtAuth := middleware.JWTProtected(cfg, sessionStore)
+
 	api := app.Group("/api")
 	v1 := api.Group("/v1")
 
@@ -48,7 +51,7 @@ func SetupRoutes(
 	qr.Get("/status/:sessionId", qrAuthHandler.GetSessionStatus)    // Polling fallback
 	qr.Post("/select-branch", qrAuthHandler.SelectBranch)           // Web chooses branch
 
-	// 2.3 WebSocket upgrade middleware & endpoint for vi-pharma web
+	// 2.3 WebSocket upgrade middleware & endpoint for vi-pharma web QR pairing
 	qr.Use("/ws", func(c *fiber.Ctx) error {
 		if websocket.IsWebSocketUpgrade(c) {
 			return c.Next()
@@ -59,17 +62,19 @@ func SetupRoutes(
 
 	// 2.4 Mobile QR Authorization (Protected by Mobile JWT)
 	qrProtected := qr.Group("")
-	qrProtected.Use(middleware.JWTProtected(cfg))
+	qrProtected.Use(jwtAuth)
 	qrProtected.Post("/authorize", qrAuthHandler.AuthorizeQR)
 
-	// 2.5 Profile Info (Protected)
+	// 2.5 Profile Info & Remote Logout Actions (Protected)
 	authProtected := auth.Group("")
-	authProtected.Use(middleware.JWTProtected(cfg))
+	authProtected.Use(jwtAuth)
 	authProtected.Get("/me", authHandler.GetMe)
+	authProtected.Post("/remote-logout", qrAuthHandler.RemoteLogout)
+	authProtected.Get("/active-workstation", qrAuthHandler.GetActiveWorkstation)
 
 	// 3. User Management (Protected: SuperAdmin / Admin)
 	users := v1.Group("/users")
-	users.Use(middleware.JWTProtected(cfg))
+	users.Use(jwtAuth)
 	users.Use(middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin))
 	users.Post("", userHandler.CreateUser)
 	users.Get("", userHandler.ListUsers)
@@ -77,7 +82,7 @@ func SetupRoutes(
 
 	// 4. Branch Management (Protected: SuperAdmin / Admin)
 	branches := v1.Group("/branches")
-	branches.Use(middleware.JWTProtected(cfg))
+	branches.Use(jwtAuth)
 	branches.Use(middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin))
 	branches.Post("", branchHandler.CreateBranch)
 	branches.Get("", branchHandler.ListBranches)
@@ -85,8 +90,17 @@ func SetupRoutes(
 	branches.Post("/assign", branchHandler.AssignUserBranch)
 
 	// 5. Workstation / Active Branch Features (Protected by Selected Branch)
+	// 5.1 Workstation WebSocket listener for real-time remote logout
+	v1.Use("/workstation/ws", func(c *fiber.Ctx) error {
+		if websocket.IsWebSocketUpgrade(c) {
+			return c.Next()
+		}
+		return fiber.ErrUpgradeRequired
+	})
+	v1.Get("/workstation/ws", qrAuthHandler.HandleWorkstationWebSocket())
+
 	workstation := v1.Group("/workstation")
-	workstation.Use(middleware.JWTProtected(cfg))
+	workstation.Use(jwtAuth)
 	workstation.Use(middleware.RequireBranch())
 
 	workstation.Get("/current", func(c *fiber.Ctx) error {
@@ -107,7 +121,7 @@ func SetupRoutes(
 
 	// 6.1 Units (Satuan)
 	units := v1.Group("/units")
-	units.Use(middleware.JWTProtected(cfg))
+	units.Use(jwtAuth)
 	units.Get("", unitHandler.ListUnits)
 	units.Get("/:id", unitHandler.GetUnitByID)
 	units.Post("", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), unitHandler.CreateUnit)
@@ -116,7 +130,7 @@ func SetupRoutes(
 
 	// 6.2 Categories (Kategori & Golongan Terapi)
 	categories := v1.Group("/categories")
-	categories.Use(middleware.JWTProtected(cfg))
+	categories.Use(jwtAuth)
 	categories.Get("", categoryHandler.ListCategories)
 	categories.Get("/:id", categoryHandler.GetCategoryByID)
 	categories.Post("", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), categoryHandler.CreateCategory)
@@ -125,7 +139,7 @@ func SetupRoutes(
 
 	// 6.3 Suppliers / PBF (Pedagang Besar Farmasi)
 	suppliers := v1.Group("/suppliers")
-	suppliers.Use(middleware.JWTProtected(cfg))
+	suppliers.Use(jwtAuth)
 	suppliers.Get("", supplierHandler.ListSuppliers)
 	suppliers.Get("/:id", supplierHandler.GetSupplierByID)
 	suppliers.Post("", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), supplierHandler.CreateSupplier)
@@ -134,7 +148,7 @@ func SetupRoutes(
 
 	// 6.4 Doctors (Dokter & Tenaga Medis)
 	doctors := v1.Group("/doctors")
-	doctors.Use(middleware.JWTProtected(cfg))
+	doctors.Use(jwtAuth)
 	doctors.Get("", doctorHandler.ListDoctors)
 	doctors.Get("/:id", doctorHandler.GetDoctorByID)
 	doctors.Post("", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), doctorHandler.CreateDoctor)
@@ -143,7 +157,7 @@ func SetupRoutes(
 
 	// 6.5 Medicines & Medical Supplies (Katalog Master Obat & Alkes)
 	medicines := v1.Group("/medicines")
-	medicines.Use(middleware.JWTProtected(cfg))
+	medicines.Use(jwtAuth)
 	medicines.Get("", medicineHandler.ListMedicines)
 	medicines.Get("/barcode/:barcode", medicineHandler.GetMedicineByBarcode)
 	medicines.Get("/:id", medicineHandler.GetMedicineByID)

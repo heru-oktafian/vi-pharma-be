@@ -10,17 +10,28 @@ import (
 	ws "pharma-be/internal/delivery/http/websocket"
 	"pharma-be/internal/domain"
 	"pharma-be/internal/usecase"
+	"pharma-be/pkg/config"
+	"pharma-be/pkg/utils"
 )
 
 type QRAuthHandler struct {
-	qrUsecase usecase.QRAuthUsecase
-	wsHub     *ws.Hub
+	qrUsecase    usecase.QRAuthUsecase
+	sessionStore domain.SessionStore
+	wsHub        *ws.Hub
+	cfg          *config.Config
 }
 
-func NewQRAuthHandler(qrUsecase usecase.QRAuthUsecase, wsHub *ws.Hub) *QRAuthHandler {
+func NewQRAuthHandler(
+	qrUsecase usecase.QRAuthUsecase,
+	sessionStore domain.SessionStore,
+	wsHub *ws.Hub,
+	cfg *config.Config,
+) *QRAuthHandler {
 	return &QRAuthHandler{
-		qrUsecase: qrUsecase,
-		wsHub:     wsHub,
+		qrUsecase:    qrUsecase,
+		sessionStore: sessionStore,
+		wsHub:        wsHub,
+		cfg:          cfg,
 	}
 }
 
@@ -167,5 +178,117 @@ func (h *QRAuthHandler) HandleWebSocket() fiber.Handler {
 		}
 
 		log.Printf("[WS] Connection closed for sessionId: %s", sessionID)
+	})
+}
+
+// RemoteLogout handles POST /api/v1/auth/remote-logout (Called by vi-token to terminate web workstation session)
+func (h *QRAuthHandler) RemoteLogout(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok || userID == "" {
+		return ErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized mobile user", nil)
+	}
+
+	// Revoke in session store
+	_ = h.sessionStore.RevokeSessionByUserID(c.Context(), userID)
+
+	// Broadcast REMOTE_LOGOUT event to all workstation WebSockets for this user
+	_ = h.wsHub.BroadcastToWorkstation(userID, &domain.WSMessage{
+		Event: "REMOTE_LOGOUT",
+		Data: map[string]interface{}{
+			"user_id": userID,
+			"message": "Sesi workstation Anda telah diakhiri secara remote dari aplikasi vi-token. Silakan scan ulang untuk masuk kembali.",
+			"reason":  "USER_TERMINATED",
+		},
+	})
+
+	// Close workstation connections
+	h.wsHub.CloseWorkstationConnections(userID)
+
+	return SuccessResponse(c, fiber.StatusOK, "Sesi workstation web berhasil diputuskan dari vi-token", nil)
+}
+
+// GetActiveWorkstation handles GET /api/v1/auth/active-workstation (Called by vi-token to check web session)
+func (h *QRAuthHandler) GetActiveWorkstation(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok || userID == "" {
+		return ErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized mobile user", nil)
+	}
+
+	session, err := h.sessionStore.GetActiveSessionByUserID(c.Context(), userID)
+	if err != nil || session == nil {
+		return SuccessResponse(c, fiber.StatusOK, "Tidak ada workstation aktif", domain.WorkstationStatusResponse{
+			HasActiveSession: false,
+		})
+	}
+
+	return SuccessResponse(c, fiber.StatusOK, "Workstation aktif ditemukan", domain.WorkstationStatusResponse{
+		HasActiveSession: true,
+		Session:          session,
+	})
+}
+
+// HandleWorkstationWebSocket returns a Fiber WebSocket handler for GET /api/v1/workstation/ws?token=<webToken>
+func (h *QRAuthHandler) HandleWorkstationWebSocket() fiber.Handler {
+	return websocket.New(func(c *websocket.Conn) {
+		token := c.Query("token")
+		if token == "" {
+			_ = c.WriteJSON(domain.WSMessage{
+				Event: domain.WSEventError,
+				Data:  "Token required in query parameter",
+			})
+			_ = c.Close()
+			return
+		}
+
+		// Validate token
+		claims, err := utils.ValidateToken(token, h.cfg.JWTSecret)
+		if err != nil {
+			_ = c.WriteJSON(domain.WSMessage{
+				Event: domain.WSEventError,
+				Data:  "Invalid or expired web token",
+			})
+			_ = c.Close()
+			return
+		}
+
+		// Check if already revoked
+		if h.sessionStore.IsTokenRevoked(token) {
+			_ = c.WriteJSON(domain.WSMessage{
+				Event: "REMOTE_LOGOUT",
+				Data:  "Session has already been revoked from vi-token",
+			})
+			_ = c.Close()
+			return
+		}
+
+		userID := claims.UserID
+		h.wsHub.RegisterWorkstation(userID, c)
+		defer h.wsHub.UnregisterWorkstation(userID, c)
+
+		// Send initial WORKSTATION_CONNECTED
+		_ = c.WriteJSON(domain.WSMessage{
+			Event: "WORKSTATION_CONNECTED",
+			Data: map[string]string{
+				"user_id":   userID,
+				"username":  claims.Username,
+				"branch_id": claims.BranchID,
+				"status":    "ACTIVE",
+			},
+		})
+
+		// Keep connection open and listen for pings / disconnects
+		for {
+			messageType, msg, err := c.ReadMessage()
+			if err != nil {
+				break
+			}
+			if messageType == websocket.PingMessage {
+				_ = c.WriteMessage(websocket.PongMessage, []byte{})
+			} else if string(msg) == "ping" {
+				_ = c.WriteJSON(fiber.Map{"event": "PONG"})
+			}
+		}
+
+		log.Printf("[Workstation WS] Closed connection for user: %s", userID)
 	})
 }

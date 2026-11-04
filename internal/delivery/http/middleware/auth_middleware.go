@@ -11,8 +11,8 @@ import (
 	"pharma-be/pkg/utils"
 )
 
-// JWTProtected verifies the Bearer token in Authorization header
-func JWTProtected(cfg *config.Config) fiber.Handler {
+// JWTProtected verifies the Bearer token in Authorization header and checks for token revocation
+func JWTProtected(cfg *config.Config, sessionStores ...domain.SessionStore) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
@@ -25,6 +25,18 @@ func JWTProtected(cfg *config.Config) fiber.Handler {
 		}
 
 		tokenString := parts[1]
+
+		// Check if token was revoked from vi-token
+		if len(sessionStores) > 0 && sessionStores[0] != nil {
+			if sessionStores[0].IsTokenRevoked(tokenString) {
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+					"success": false,
+					"code":    "SESSION_REVOKED",
+					"message": "Sesi workstation Anda telah diakhiri dari vi-token. Silakan scan QR ulang untuk masuk kembali.",
+				})
+			}
+		}
+
 		claims, err := utils.ValidateToken(tokenString, cfg.JWTSecret)
 		if err != nil {
 			return handler.ErrorResponse(c, fiber.StatusUnauthorized, "Invalid or expired token", err)

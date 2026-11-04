@@ -20,26 +20,29 @@ type QRAuthUsecase interface {
 }
 
 type qrAuthUsecase struct {
-	qrStore    domain.QRSessionStore
-	userRepo   domain.UserRepository
-	branchRepo domain.BranchRepository
-	wsHub      *websocket.Hub
-	cfg        *config.Config
+	qrStore      domain.QRSessionStore
+	sessionStore domain.SessionStore
+	userRepo     domain.UserRepository
+	branchRepo   domain.BranchRepository
+	wsHub        *websocket.Hub
+	cfg          *config.Config
 }
 
 func NewQRAuthUsecase(
 	qrStore domain.QRSessionStore,
+	sessionStore domain.SessionStore,
 	userRepo domain.UserRepository,
 	branchRepo domain.BranchRepository,
 	wsHub *websocket.Hub,
 	cfg *config.Config,
 ) QRAuthUsecase {
 	return &qrAuthUsecase{
-		qrStore:    qrStore,
-		userRepo:   userRepo,
-		branchRepo: branchRepo,
-		wsHub:      wsHub,
-		cfg:        cfg,
+		qrStore:      qrStore,
+		sessionStore: sessionStore,
+		userRepo:     userRepo,
+		branchRepo:   branchRepo,
+		wsHub:        wsHub,
+		cfg:          cfg,
 	}
 }
 
@@ -178,6 +181,20 @@ func (u *qrAuthUsecase) SelectBranch(ctx context.Context, req *domain.SelectBran
 	session.Status = domain.QRSessionStatusConsumed
 	session.SelectedBranchID = branch.ID
 	_ = u.qrStore.Update(ctx, session)
+
+	// Register active workstation session for remote logout tracking
+	_ = u.sessionStore.CreateSession(ctx, &domain.WorkstationSession{
+		SessionID:  session.SessionID,
+		UserID:     session.User.ID,
+		Username:   session.User.Username,
+		Role:       string(session.User.UserRole),
+		BranchID:   branch.ID,
+		BranchName: branch.BranchName,
+		Token:      webToken,
+		CreatedAt:  time.Now(),
+		LastSeenAt: time.Now(),
+		IsActive:   true,
+	})
 
 	// Notify WebSocket of final consumption
 	_ = u.wsHub.BroadcastToSession(session.SessionID, &domain.WSMessage{

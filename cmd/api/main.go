@@ -42,6 +42,7 @@ func main() {
 	userRepo := postgres.NewUserRepository(db)
 	branchRepo := postgres.NewBranchRepository(db)
 	qrSessionStore := memory.NewQRSessionStore()
+	sessionStore := memory.NewSessionStore()
 
 	unitRepo := postgres.NewUnitRepository(db)
 	categoryRepo := postgres.NewCategoryRepository(db)
@@ -54,7 +55,7 @@ func main() {
 
 	// 5. Initialize Clean Architecture Usecases
 	authUsecase := usecase.NewAuthUsecase(userRepo, cfg)
-	qrAuthUsecase := usecase.NewQRAuthUsecase(qrSessionStore, userRepo, branchRepo, wsHub, cfg)
+	qrAuthUsecase := usecase.NewQRAuthUsecase(qrSessionStore, sessionStore, userRepo, branchRepo, wsHub, cfg)
 	userUsecase := usecase.NewUserUsecase(userRepo)
 	branchUsecase := usecase.NewBranchUsecase(branchRepo)
 
@@ -66,7 +67,7 @@ func main() {
 
 	// 6. Initialize HTTP & WebSocket Handlers
 	authHandler := handler.NewAuthHandler(authUsecase)
-	qrAuthHandler := handler.NewQRAuthHandler(qrAuthUsecase, wsHub)
+	qrAuthHandler := handler.NewQRAuthHandler(qrAuthUsecase, sessionStore, wsHub, cfg)
 	userHandler := handler.NewUserHandler(userUsecase)
 	branchHandler := handler.NewBranchHandler(branchUsecase)
 
@@ -102,6 +103,7 @@ func main() {
 	route.SetupRoutes(
 		app,
 		cfg,
+		sessionStore,
 		authHandler,
 		qrAuthHandler,
 		userHandler,

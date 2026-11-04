@@ -25,5 +25,7 @@ var (
 	ErrMedicineNotFound           = errors.New("data obat / alkes tidak ditemukan")
 	ErrItemCodeAlreadyExists      = errors.New("kode item obat sudah digunakan")
 	ErrBarcodeAlreadyExists       = errors.New("barcode obat sudah terdaftar")
+	ErrSessionRevoked             = errors.New("sesi workstation telah diakhiri dari vi-token")
+	ErrSessionNotFound            = errors.New("sesi workstation tidak ditemukan")
 	ErrInternalServer             = errors.New("internal server error")
 )
