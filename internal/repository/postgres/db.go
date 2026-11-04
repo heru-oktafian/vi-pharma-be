@@ -94,6 +94,12 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 		&domain.Medicine{},
 		&domain.MedicineUnit{},
 		&domain.MedicinePrice{},
+		&domain.MedicineBatch{},
+		&domain.StockMutation{},
+		&domain.PurchaseInvoice{},
+		&domain.PurchaseInvoiceItem{},
+		&domain.StockOpname{},
+		&domain.StockOpnameItem{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to auto-migrate tables: %w", err)
 	}

@@ -49,6 +49,7 @@ func main() {
 	supplierRepo := postgres.NewSupplierRepository(db)
 	doctorRepo := postgres.NewDoctorRepository(db)
 	medicineRepo := postgres.NewMedicineRepository(db)
+	inventoryRepo := postgres.NewInventoryRepository(db)
 
 	// 4. Initialize WebSocket Hub
 	wsHub := ws.NewHub()
@@ -64,6 +65,7 @@ func main() {
 	supplierUsecase := usecase.NewSupplierUsecase(supplierRepo)
 	doctorUsecase := usecase.NewDoctorUsecase(doctorRepo)
 	medicineUsecase := usecase.NewMedicineUsecase(medicineRepo, categoryRepo, unitRepo)
+	inventoryUsecase := usecase.NewInventoryUsecase(inventoryRepo, medicineRepo)
 
 	// 6. Initialize HTTP & WebSocket Handlers
 	authHandler := handler.NewAuthHandler(authUsecase)
@@ -76,6 +78,7 @@ func main() {
 	supplierHandler := handler.NewSupplierHandler(supplierUsecase)
 	doctorHandler := handler.NewDoctorHandler(doctorUsecase)
 	medicineHandler := handler.NewMedicineHandler(medicineUsecase)
+	inventoryHandler := handler.NewInventoryHandler(inventoryUsecase)
 
 	// 7. Initialize Fiber Web App
 	app := fiber.New(fiber.Config{
@@ -113,6 +116,7 @@ func main() {
 		supplierHandler,
 		doctorHandler,
 		medicineHandler,
+		inventoryHandler,
 	)
 
 	// 9. Graceful Shutdown Handler

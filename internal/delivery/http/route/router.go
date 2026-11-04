@@ -24,6 +24,7 @@ func SetupRoutes(
 	supplierHandler *handler.SupplierHandler,
 	doctorHandler *handler.DoctorHandler,
 	medicineHandler *handler.MedicineHandler,
+	inventoryHandler *handler.InventoryHandler,
 ) {
 	jwtAuth := middleware.JWTProtected(cfg, sessionStore)
 
@@ -164,4 +165,35 @@ func SetupRoutes(
 	medicines.Post("", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), medicineHandler.CreateMedicine)
 	medicines.Put("/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), medicineHandler.UpdateMedicine)
 	medicines.Delete("/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), medicineHandler.DeleteMedicine)
+
+	// -------------------------------------------------------------
+	// 7. Inventory & Warehouse Management (Modul Gudang & Stok)
+	// -------------------------------------------------------------
+	inv := v1.Group("/inventory")
+	inv.Use(jwtAuth)
+
+	// 7.1 Stock Summary (3-Level: Gudang, Rak, Total)
+	inv.Get("/stock-summary", inventoryHandler.ListStockSummaries)
+	inv.Get("/stock-summary/:medicineId", inventoryHandler.GetStockSummary)
+
+	// 7.2 Digital Stock Card (Buku Mutasi Barang)
+	inv.Get("/stock-card/:medicineId", inventoryHandler.GetStockCard)
+
+	// 7.3 FEFO & Expiration Date Watcher
+	inv.Get("/fefo-alerts", inventoryHandler.GetFefoAlerts)
+
+	// 7.4 Internal Stock Transfer (Refill Rak & Return Gudang)
+	inv.Post("/refill-shelf", inventoryHandler.RefillShelf)
+	inv.Post("/return-warehouse", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.ReturnToWarehouse)
+
+	// 7.5 Purchase Invoices (Faktur Pembelian PBF)
+	inv.Post("/invoices", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.ReceivePurchaseInvoice)
+	inv.Get("/invoices", inventoryHandler.ListPurchaseInvoices)
+	inv.Get("/invoices/:id", inventoryHandler.GetPurchaseInvoiceDetail)
+
+	// 7.6 Rolling Cycle Count (Stok Opname Bergulir)
+	inv.Post("/opnames", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.CreateOpnameSession)
+	inv.Post("/opnames/:id/submit", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.SubmitOpnameSession)
+	inv.Get("/opnames", inventoryHandler.ListOpnames)
+	inv.Get("/opnames/:id", inventoryHandler.GetOpnameDetail)
 }

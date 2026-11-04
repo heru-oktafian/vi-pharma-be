@@ -1,0 +1,617 @@
+package usecase
+
+import (
+	"context"
+	"fmt"
+	"math/rand"
+	"time"
+
+	"pharma-be/internal/domain"
+	"pharma-be/pkg/utils"
+)
+
+type inventoryUsecase struct {
+	invRepo domain.InventoryRepository
+	medRepo domain.MedicineRepository
+}
+
+func NewInventoryUsecase(
+	invRepo domain.InventoryRepository,
+	medRepo domain.MedicineRepository,
+) domain.InventoryUsecase {
+	return &inventoryUsecase{
+		invRepo: invRepo,
+		medRepo: medRepo,
+	}
+}
+
+// -------------------------------------------------------------
+// Purchase Invoices (Penerimaan Faktur PBF)
+// -------------------------------------------------------------
+
+func (u *inventoryUsecase) ReceivePurchaseInvoice(
+	ctx context.Context,
+	branchID, userID string,
+	req *domain.CreatePurchaseInvoiceRequest,
+) (*domain.PurchaseInvoice, error) {
+	invoiceDate, err := time.Parse("2006-01-02", req.InvoiceDate)
+	if err != nil {
+		invoiceDate = time.Now()
+	}
+
+	var dueDate time.Time
+	if req.DueDate != "" {
+		if d, err := time.Parse("2006-01-02", req.DueDate); err == nil {
+			dueDate = d
+		}
+	}
+
+	invoiceID := utils.GeneratePurchaseInvoiceID()
+	var subtotal float64
+	var items []domain.PurchaseInvoiceItem
+
+	for _, itemInput := range req.Items {
+		expDate, err := time.Parse("2006-01-02", itemInput.ExpiredDate)
+		if err != nil {
+			expDate = time.Now().AddDate(1, 0, 0) // default 1 year if invalid
+		}
+
+		conv := itemInput.ConversionFactor
+		if conv <= 0 {
+			conv = 1
+		}
+		qtyBase := itemInput.QtyPurchased * conv
+		discountFactor := 1.0 - (itemInput.DiscountPercent / 100.0)
+		if discountFactor < 0 {
+			discountFactor = 0
+		}
+		itemSubtotal := itemInput.QtyPurchased * itemInput.BuyPrice * discountFactor
+		subtotal += itemSubtotal
+
+		// Unit buy price per base unit
+		hppPerBase := (itemInput.BuyPrice / conv) * discountFactor
+
+		// Batch Lookup or Creation
+		batch, err := u.invRepo.FindBatchByNumberAndMedicine(ctx, branchID, itemInput.MedicineID, itemInput.BatchNumber)
+		if err != nil {
+			// Create new batch
+			batch = &domain.MedicineBatch{
+				ID:          utils.GenerateBatchID(),
+				MedicineID:  itemInput.MedicineID,
+				BranchID:    branchID,
+				BatchNumber: itemInput.BatchNumber,
+				ExpiredDate: expDate,
+				BuyPrice:    hppPerBase,
+				IsActive:    true,
+			}
+			if itemInput.PutToShelfDirectly {
+				batch.QtyShelf = qtyBase
+				batch.QtyWarehouse = 0
+			} else {
+				batch.QtyWarehouse = qtyBase
+				batch.QtyShelf = 0
+			}
+			batch.CalculateTotal()
+			if err := u.invRepo.CreateBatch(ctx, batch); err != nil {
+				return nil, fmt.Errorf("failed to create batch: %w", err)
+			}
+		} else {
+			// Update existing batch
+			if itemInput.PutToShelfDirectly {
+				batch.QtyShelf += qtyBase
+			} else {
+				batch.QtyWarehouse += qtyBase
+			}
+			batch.BuyPrice = hppPerBase
+			batch.ExpiredDate = expDate
+			batch.CalculateTotal()
+			if err := u.invRepo.UpdateBatch(ctx, batch); err != nil {
+				return nil, fmt.Errorf("failed to update batch: %w", err)
+			}
+		}
+
+		// Log Stock Mutation
+		targetLoc := domain.LocationWarehouse
+		balAfter := batch.QtyWarehouse
+		if itemInput.PutToShelfDirectly {
+			targetLoc = domain.LocationShelf
+			balAfter = batch.QtyShelf
+		}
+
+		mutation := &domain.StockMutation{
+			ID:           utils.GenerateStockMutationID(),
+			BranchID:     branchID,
+			MedicineID:   itemInput.MedicineID,
+			BatchID:      batch.ID,
+			MutationType: domain.MutationPurchase,
+			Location:     targetLoc,
+			ReferenceNo:  req.InvoiceNumber,
+			QtyIn:        qtyBase,
+			QtyOut:       0,
+			BalanceAfter: balAfter,
+			TotalAfter:   batch.TotalStock,
+			Notes:        fmt.Sprintf("Penerimaan Faktur PBF No. %s (Batch: %s)", req.InvoiceNumber, batch.BatchNumber),
+			UserID:       userID,
+		}
+		if err := u.invRepo.CreateMutation(ctx, mutation); err != nil {
+			return nil, fmt.Errorf("failed to log stock mutation: %w", err)
+		}
+
+		// Prepare invoice item
+		items = append(items, domain.PurchaseInvoiceItem{
+			ID:                 utils.GeneratePurchaseInvoiceItemID(),
+			PurchaseInvoiceID:  invoiceID,
+			MedicineID:         itemInput.MedicineID,
+			UnitID:             itemInput.UnitID,
+			ConversionFactor:   conv,
+			QtyPurchased:       itemInput.QtyPurchased,
+			QtyBaseUnit:        qtyBase,
+			BatchNumber:        itemInput.BatchNumber,
+			ExpiredDate:        expDate,
+			BuyPrice:           itemInput.BuyPrice,
+			DiscountPercent:    itemInput.DiscountPercent,
+			Subtotal:           itemSubtotal,
+			PutToShelfDirectly: itemInput.PutToShelfDirectly,
+		})
+	}
+
+	paymentStatus := domain.PaymentStatusUnpaid
+	if req.PaymentType == domain.PaymentCash {
+		paymentStatus = domain.PaymentStatusPaid
+	}
+
+	totalAmount := subtotal - req.DiscountAmount + req.TaxAmount
+	if totalAmount < 0 {
+		totalAmount = 0
+	}
+
+	invoice := &domain.PurchaseInvoice{
+		ID:             invoiceID,
+		BranchID:       branchID,
+		SupplierID:     req.SupplierID,
+		InvoiceNumber:  req.InvoiceNumber,
+		InvoiceDate:    invoiceDate,
+		DueDate:        dueDate,
+		PaymentType:    req.PaymentType,
+		PaymentStatus:  paymentStatus,
+		Subtotal:       subtotal,
+		DiscountAmount: req.DiscountAmount,
+		TaxAmount:      req.TaxAmount,
+		TotalAmount:    totalAmount,
+		Notes:          req.Notes,
+		ReceivedByID:   userID,
+		Items:          items,
+	}
+
+	if err := u.invRepo.CreatePurchaseInvoice(ctx, invoice); err != nil {
+		return nil, fmt.Errorf("failed to save invoice: %w", err)
+	}
+
+	return u.invRepo.GetPurchaseInvoiceByID(ctx, invoiceID)
+}
+
+func (u *inventoryUsecase) ListPurchaseInvoices(ctx context.Context, branchID string, page, limit int) ([]*domain.PurchaseInvoice, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	return u.invRepo.ListPurchaseInvoices(ctx, branchID, page, limit)
+}
+
+func (u *inventoryUsecase) GetPurchaseInvoiceDetail(ctx context.Context, invoiceID string) (*domain.PurchaseInvoice, error) {
+	return u.invRepo.GetPurchaseInvoiceByID(ctx, invoiceID)
+}
+
+// -------------------------------------------------------------
+// Internal Stock Movements (Gudang <-> Rak)
+// -------------------------------------------------------------
+
+func (u *inventoryUsecase) RefillShelf(
+	ctx context.Context,
+	branchID, userID string,
+	req *domain.RefillShelfRequest,
+) (*domain.MedicineBatch, error) {
+	batch, err := u.invRepo.FindBatchByID(ctx, req.BatchID)
+	if err != nil {
+		return nil, err
+	}
+	if batch.BranchID != branchID {
+		return nil, domain.ErrBatchNotFound
+	}
+	if batch.QtyWarehouse < req.Qty {
+		return nil, domain.ErrInsufficientWarehouseStock
+	}
+
+	batch.QtyWarehouse -= req.Qty
+	batch.QtyShelf += req.Qty
+	batch.CalculateTotal()
+
+	if err := u.invRepo.UpdateBatch(ctx, batch); err != nil {
+		return nil, err
+	}
+
+	notes := req.Notes
+	if notes == "" {
+		notes = fmt.Sprintf("Refill Rak dari Gudang (Batch: %s)", batch.BatchNumber)
+	}
+
+	// Double-entry mutation: Gudang Out, Rak In
+	_ = u.invRepo.CreateMutation(ctx, &domain.StockMutation{
+		ID:           utils.GenerateStockMutationID(),
+		BranchID:     branchID,
+		MedicineID:   batch.MedicineID,
+		BatchID:      batch.ID,
+		MutationType: domain.MutationRefillShelf,
+		Location:     domain.LocationWarehouse,
+		ReferenceNo:  "REFILL-" + batch.ID,
+		QtyIn:        0,
+		QtyOut:       req.Qty,
+		BalanceAfter: batch.QtyWarehouse,
+		TotalAfter:   batch.TotalStock,
+		Notes:        notes,
+		UserID:       userID,
+	})
+
+	_ = u.invRepo.CreateMutation(ctx, &domain.StockMutation{
+		ID:           utils.GenerateStockMutationID(),
+		BranchID:     branchID,
+		MedicineID:   batch.MedicineID,
+		BatchID:      batch.ID,
+		MutationType: domain.MutationRefillShelf,
+		Location:     domain.LocationShelf,
+		ReferenceNo:  "REFILL-" + batch.ID,
+		QtyIn:        req.Qty,
+		QtyOut:       0,
+		BalanceAfter: batch.QtyShelf,
+		TotalAfter:   batch.TotalStock,
+		Notes:        notes,
+		UserID:       userID,
+	})
+
+	return batch, nil
+}
+
+func (u *inventoryUsecase) ReturnToWarehouse(
+	ctx context.Context,
+	branchID, userID string,
+	req *domain.ReturnToWarehouseRequest,
+) (*domain.MedicineBatch, error) {
+	batch, err := u.invRepo.FindBatchByID(ctx, req.BatchID)
+	if err != nil {
+		return nil, err
+	}
+	if batch.BranchID != branchID {
+		return nil, domain.ErrBatchNotFound
+	}
+	if batch.QtyShelf < req.Qty {
+		return nil, domain.ErrInsufficientShelfStock
+	}
+
+	batch.QtyShelf -= req.Qty
+	batch.QtyWarehouse += req.Qty
+	batch.CalculateTotal()
+
+	if err := u.invRepo.UpdateBatch(ctx, batch); err != nil {
+		return nil, err
+	}
+
+	notes := req.Notes
+	if notes == "" {
+		notes = fmt.Sprintf("Kembali ke Gudang dari Rak (Batch: %s)", batch.BatchNumber)
+	}
+
+	// Double-entry mutation: Rak Out, Gudang In
+	_ = u.invRepo.CreateMutation(ctx, &domain.StockMutation{
+		ID:           utils.GenerateStockMutationID(),
+		BranchID:     branchID,
+		MedicineID:   batch.MedicineID,
+		BatchID:      batch.ID,
+		MutationType: domain.MutationReturnToWarehouse,
+		Location:     domain.LocationShelf,
+		ReferenceNo:  "RETURN-" + batch.ID,
+		QtyIn:        0,
+		QtyOut:       req.Qty,
+		BalanceAfter: batch.QtyShelf,
+		TotalAfter:   batch.TotalStock,
+		Notes:        notes,
+		UserID:       userID,
+	})
+
+	_ = u.invRepo.CreateMutation(ctx, &domain.StockMutation{
+		ID:           utils.GenerateStockMutationID(),
+		BranchID:     branchID,
+		MedicineID:   batch.MedicineID,
+		BatchID:      batch.ID,
+		MutationType: domain.MutationReturnToWarehouse,
+		Location:     domain.LocationWarehouse,
+		ReferenceNo:  "RETURN-" + batch.ID,
+		QtyIn:        req.Qty,
+		QtyOut:       0,
+		BalanceAfter: batch.QtyWarehouse,
+		TotalAfter:   batch.TotalStock,
+		Notes:        notes,
+		UserID:       userID,
+	})
+
+	return batch, nil
+}
+
+// -------------------------------------------------------------
+// Stock Summaries & Digital Stock Card
+// -------------------------------------------------------------
+
+func (u *inventoryUsecase) GetStockSummary(ctx context.Context, branchID, medicineID string) (*domain.StockSummaryResponse, error) {
+	med, err := u.medRepo.FindByID(ctx, medicineID)
+	if err != nil {
+		return nil, err
+	}
+
+	batches, err := u.invRepo.FindBatchesByMedicine(ctx, branchID, medicineID)
+	if err != nil {
+		return nil, err
+	}
+
+	var totalWh, totalSh float64
+	for _, b := range batches {
+		totalWh += b.QtyWarehouse
+		totalSh += b.QtyShelf
+	}
+
+	baseUnitName := "Pcs"
+	if med.BaseUnit != nil {
+		baseUnitName = med.BaseUnit.Name
+	}
+
+	return &domain.StockSummaryResponse{
+		MedicineID:     med.ID,
+		ItemCode:       med.ItemCode,
+		Name:           med.Name,
+		BaseUnitName:   baseUnitName,
+		TotalWarehouse: totalWh,
+		TotalShelf:     totalSh,
+		TotalStock:     totalWh + totalSh,
+		MinStock:       med.MinStock,
+		Batches:        batches,
+	}, nil
+}
+
+func (u *inventoryUsecase) ListStockSummaries(ctx context.Context, branchID string, search string) ([]domain.StockSummaryResponse, error) {
+	return u.invRepo.GetStockSummaryByBranch(ctx, branchID, search)
+}
+
+func (u *inventoryUsecase) GetStockCard(ctx context.Context, branchID, medicineID string, startDate, endDate string) ([]*domain.StockMutation, error) {
+	var sDate, eDate time.Time
+	if startDate != "" {
+		if d, err := time.Parse("2006-01-02", startDate); err == nil {
+			sDate = d
+		}
+	}
+	if endDate != "" {
+		if d, err := time.Parse("2006-01-02", endDate); err == nil {
+			eDate = d.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+		}
+	}
+	return u.invRepo.GetMutationsByMedicine(ctx, branchID, medicineID, sDate, eDate)
+}
+
+// -------------------------------------------------------------
+// FEFO & Expiry Watcher
+// -------------------------------------------------------------
+
+func (u *inventoryUsecase) GetFefoAlerts(ctx context.Context, branchID string) ([]domain.FefoAlertItem, error) {
+	batches, err := u.invRepo.FindBatchesFEFO(ctx, branchID)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	var alerts []domain.FefoAlertItem
+
+	for _, b := range batches {
+		// Only display batches that still have stock or are expired
+		if b.TotalStock <= 0 {
+			continue
+		}
+
+		days := int(b.ExpiredDate.Sub(now).Hours() / 24)
+		status := "SAFE"
+		if days <= 0 {
+			status = "EXPIRED"
+		} else if days <= 90 {
+			status = "CRITICAL" // < 3 bulan
+		} else if days <= 180 {
+			status = "WARNING"  // < 6 bulan
+		}
+
+		medName := "Unknown Medicine"
+		itemCode := ""
+		if b.Medicine != nil {
+			medName = b.Medicine.Name
+			itemCode = b.Medicine.ItemCode
+		}
+
+		alerts = append(alerts, domain.FefoAlertItem{
+			BatchID:      b.ID,
+			MedicineID:   b.MedicineID,
+			MedicineName: medName,
+			ItemCode:     itemCode,
+			BatchNumber:  b.BatchNumber,
+			ExpiredDate:  b.ExpiredDate,
+			DaysToExpiry: days,
+			QtyWarehouse: b.QtyWarehouse,
+			QtyShelf:     b.QtyShelf,
+			TotalStock:   b.TotalStock,
+			AlertStatus:  status,
+		})
+	}
+
+	return alerts, nil
+}
+
+// -------------------------------------------------------------
+// Rolling Cycle Count (Stok Opname Bergulir Parsial)
+// -------------------------------------------------------------
+
+func (u *inventoryUsecase) CreateOpnameSession(
+	ctx context.Context,
+	branchID, userID string,
+	req *domain.CreateOpnameSessionRequest,
+) (*domain.StockOpname, error) {
+	opnameID := utils.GenerateStockOpnameID()
+	opnameCode := fmt.Sprintf("SOP-%s-%04d", time.Now().Format("20060102"), rand.Intn(10000))
+
+	opname := &domain.StockOpname{
+		ID:          opnameID,
+		BranchID:    branchID,
+		OpnameCode:  opnameCode,
+		OpnameDate:  time.Now(),
+		Location:    req.Location,
+		RackName:    req.RackName,
+		Status:      domain.OpnameDraft,
+		Notes:       req.Notes,
+		CreatedByID: userID,
+	}
+
+	if err := u.invRepo.CreateOpname(ctx, opname); err != nil {
+		return nil, err
+	}
+
+	// Add initial items if provided in request
+	for _, it := range req.Items {
+		batch, err := u.invRepo.FindBatchByID(ctx, it.BatchID)
+		if err != nil {
+			continue
+		}
+
+		var sysQty float64
+		if req.Location == domain.LocationWarehouse {
+			sysQty = batch.QtyWarehouse
+		} else {
+			sysQty = batch.QtyShelf
+		}
+
+		diff := it.PhysicalQty - sysQty
+
+		opItem := &domain.StockOpnameItem{
+			ID:            utils.GenerateStockOpnameItemID(),
+			StockOpnameID: opnameID,
+			MedicineID:    it.MedicineID,
+			BatchID:       it.BatchID,
+			SystemQty:     sysQty,
+			PhysicalQty:   it.PhysicalQty,
+			DifferenceQty: diff,
+			Notes:         it.Notes,
+		}
+		_ = u.invRepo.AddOpnameItem(ctx, opItem)
+	}
+
+	return u.invRepo.GetOpnameByID(ctx, opnameID)
+}
+
+func (u *inventoryUsecase) SubmitOpnameSession(
+	ctx context.Context,
+	branchID, userID, opnameID string,
+	req *domain.SubmitOpnameRequest,
+) (*domain.StockOpname, error) {
+	opname, err := u.invRepo.GetOpnameByID(ctx, opnameID)
+	if err != nil {
+		return nil, err
+	}
+	if opname.BranchID != branchID {
+		return nil, domain.ErrOpnameNotFound
+	}
+	if opname.Status == domain.OpnameCompleted {
+		return nil, domain.ErrOpnameAlreadyCompleted
+	}
+
+	// Process each counted item and adjust stock immediately
+	for _, it := range req.Items {
+		batch, err := u.invRepo.FindBatchByID(ctx, it.BatchID)
+		if err != nil {
+			continue
+		}
+
+		var sysQty float64
+		if opname.Location == domain.LocationWarehouse {
+			sysQty = batch.QtyWarehouse
+			batch.QtyWarehouse = it.PhysicalQty
+		} else {
+			sysQty = batch.QtyShelf
+			batch.QtyShelf = it.PhysicalQty
+		}
+		batch.CalculateTotal()
+
+		diff := it.PhysicalQty - sysQty
+
+		// Update batch balance
+		if err := u.invRepo.UpdateBatch(ctx, batch); err != nil {
+			return nil, err
+		}
+
+		// Log Stock Mutation for Opname Adjustment
+		var qtyIn, qtyOut float64
+		if diff > 0 {
+			qtyIn = diff
+		} else if diff < 0 {
+			qtyOut = -diff
+		}
+
+		balAfter := batch.QtyWarehouse
+		if opname.Location == domain.LocationShelf {
+			balAfter = batch.QtyShelf
+		}
+
+		mutation := &domain.StockMutation{
+			ID:           utils.GenerateStockMutationID(),
+			BranchID:     branchID,
+			MedicineID:   it.MedicineID,
+			BatchID:      it.BatchID,
+			MutationType: domain.MutationAdjustment,
+			Location:     opname.Location,
+			ReferenceNo:  opname.OpnameCode,
+			QtyIn:        qtyIn,
+			QtyOut:       qtyOut,
+			BalanceAfter: balAfter,
+			TotalAfter:   batch.TotalStock,
+			Notes:        fmt.Sprintf("Penyesuaian Opname Fisik: %s (%s). %s", opname.RackName, opname.Location, it.Notes),
+			UserID:       userID,
+		}
+		_ = u.invRepo.CreateMutation(ctx, mutation)
+
+		// Record Opname Item
+		opItem := &domain.StockOpnameItem{
+			ID:            utils.GenerateStockOpnameItemID(),
+			StockOpnameID: opnameID,
+			MedicineID:    it.MedicineID,
+			BatchID:       it.BatchID,
+			SystemQty:     sysQty,
+			PhysicalQty:   it.PhysicalQty,
+			DifferenceQty: diff,
+			Notes:         it.Notes,
+		}
+		_ = u.invRepo.AddOpnameItem(ctx, opItem)
+	}
+
+	opname.Status = domain.OpnameCompleted
+	if err := u.invRepo.UpdateOpname(ctx, opname); err != nil {
+		return nil, err
+	}
+
+	return u.invRepo.GetOpnameByID(ctx, opnameID)
+}
+
+func (u *inventoryUsecase) ListOpnames(ctx context.Context, branchID string, page, limit int) ([]*domain.StockOpname, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	return u.invRepo.ListOpnames(ctx, branchID, page, limit)
+}
+
+func (u *inventoryUsecase) GetOpnameDetail(ctx context.Context, opnameID string) (*domain.StockOpname, error) {
+	return u.invRepo.GetOpnameByID(ctx, opnameID)
+}

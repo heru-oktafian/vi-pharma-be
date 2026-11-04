@@ -75,3 +75,33 @@ func GenerateMedicineUnitID() string {
 func GenerateMedicinePriceID() string {
 	return generateIDWithPrefix("MPR")
 }
+
+// GenerateBatchID generates a 15-character unique identifier for medicine batches (prefix "BAT")
+func GenerateBatchID() string {
+	return generateIDWithPrefix("BAT")
+}
+
+// GeneratePurchaseInvoiceID generates a 15-character unique identifier for purchase invoices (prefix "PIV")
+func GeneratePurchaseInvoiceID() string {
+	return generateIDWithPrefix("PIV")
+}
+
+// GeneratePurchaseInvoiceItemID generates a 15-character unique identifier for invoice items (prefix "PII")
+func GeneratePurchaseInvoiceItemID() string {
+	return generateIDWithPrefix("PII")
+}
+
+// GenerateStockMutationID generates a 15-character unique identifier for stock mutations (prefix "MUT")
+func GenerateStockMutationID() string {
+	return generateIDWithPrefix("MUT")
+}
+
+// GenerateStockOpnameID generates a 15-character unique identifier for stock opname (prefix "SOP")
+func GenerateStockOpnameID() string {
+	return generateIDWithPrefix("SOP")
+}
+
+// GenerateStockOpnameItemID generates a 15-character unique identifier for opname items (prefix "SOI")
+func GenerateStockOpnameItemID() string {
+	return generateIDWithPrefix("SOI")
+}
