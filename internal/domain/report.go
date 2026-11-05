@@ -1,0 +1,99 @@
+package domain
+
+import (
+	"context"
+)
+
+// StaffPerformanceItem represents individual contributor metrics
+type StaffPerformanceItem struct {
+	UserID                     string  `json:"user_id"`
+	UserName                   string  `json:"user_name"`
+	UserRole                   string  `json:"user_role"`
+	TotalTransactions          int64   `json:"total_transactions"`
+	TotalRevenue               float64 `json:"total_revenue"`
+	RevenueContributionPercent float64 `json:"revenue_contribution_percent"`
+	TotalCOGS                  float64 `json:"total_cogs"`                 // Total Modal Beli (HPP)
+	GrossMargin                float64 `json:"gross_margin"`               // Total Keuntungan Kotor (Rp)
+	MarginContributionPercent  float64 `json:"margin_contribution_percent"` // % terhadap Total Laba Cabang
+	MarkupPercent              float64 `json:"markup_percent"`             // % Keuntungan terhadap Modal (misal 200%)
+	TuslahAmount               float64 `json:"tuslah_amount"`              // Jasa Racik Apoteker
+	EstimatedBonus             float64 `json:"estimated_bonus"`            // Perhitungan estimasi bonus dari bonus pool
+}
+
+// StaffPerformanceReportResponse represents the full report structure
+type StaffPerformanceReportResponse struct {
+	BranchID            string                 `json:"branch_id"`
+	BranchName          string                 `json:"branch_name"`
+	PeriodStart         string                 `json:"period_start"`
+	PeriodEnd           string                 `json:"period_end"`
+	TotalBranchRevenue  float64                `json:"total_branch_revenue"`
+	TotalBranchCOGS     float64                `json:"total_branch_cogs"`
+	TotalBranchMargin   float64                `json:"total_branch_margin"`
+	AverageBranchMarkup float64                `json:"average_branch_markup"` // (Total Margin / Total COGS) * 100
+	BonusPoolBudget     float64                `json:"bonus_pool_budget"`
+	TargetMarginPercent float64                `json:"target_margin_percent"`
+	StaffContributions  []StaffPerformanceItem `json:"staff_contributions"`
+}
+
+// PaymentMethodSummary represents revenue breakdown by payment method
+type PaymentMethodSummary struct {
+	PaymentMethod string  `json:"payment_method"`
+	Count         int64   `json:"count"`
+	TotalAmount   float64 `json:"total_amount"`
+	Percentage    float64 `json:"percentage"`
+}
+
+// CategoryMarginItem represents margin breakdown by drug category
+type CategoryMarginItem struct {
+	CategoryID    string  `json:"category_id"`
+	CategoryName  string  `json:"category_name"`
+	TotalQtySold  float64 `json:"total_qty_sold"`
+	TotalRevenue  float64 `json:"total_revenue"`
+	TotalCOGS     float64 `json:"total_cogs"`
+	GrossMargin   float64 `json:"gross_margin"`
+	MarginPercent float64 `json:"margin_percent"`
+	MarkupPercent float64 `json:"markup_percent"`
+}
+
+// DailySalesTrend represents time series sales trend
+type DailySalesTrend struct {
+	Date         string  `json:"date"`
+	Transactions int64   `json:"transactions"`
+	Revenue      float64 `json:"revenue"`
+	COGS         float64 `json:"cogs"`
+	Margin       float64 `json:"margin"`
+}
+
+// SalesSummaryReportResponse represents comprehensive branch sales report
+type SalesSummaryReportResponse struct {
+	BranchID             string                 `json:"branch_id"`
+	PeriodStart          string                 `json:"period_start"`
+	PeriodEnd            string                 `json:"period_end"`
+	TotalTransactions    int64                  `json:"total_transactions"`
+	TotalRevenue         float64                `json:"total_revenue"`
+	TotalCOGS            float64                `json:"total_cogs"`
+	TotalMargin          float64                `json:"total_margin"`
+	MarginPercent        float64                `json:"margin_percent"`
+	PaymentMethodSummary []PaymentMethodSummary `json:"payment_methods"`
+	DailyTrends          []DailySalesTrend      `json:"daily_trends"`
+}
+
+type ReportFilter struct {
+	BranchID            string  `json:"branch_id"`
+	StartDate           string  `json:"start_date"`
+	EndDate             string  `json:"end_date"`
+	BonusPoolBudget     float64 `json:"bonus_pool_budget"`
+	TargetMarginPercent float64 `json:"target_margin_percent"`
+}
+
+type ReportRepository interface {
+	GetStaffPerformanceReport(ctx context.Context, filter ReportFilter) (*StaffPerformanceReportResponse, error)
+	GetSalesSummaryReport(ctx context.Context, filter ReportFilter) (*SalesSummaryReportResponse, error)
+	GetCategoryMarginsReport(ctx context.Context, filter ReportFilter) ([]CategoryMarginItem, error)
+}
+
+type ReportUsecase interface {
+	GetStaffPerformanceReport(ctx context.Context, filter ReportFilter) (*StaffPerformanceReportResponse, error)
+	GetSalesSummaryReport(ctx context.Context, filter ReportFilter) (*SalesSummaryReportResponse, error)
+	GetCategoryMarginsReport(ctx context.Context, filter ReportFilter) ([]CategoryMarginItem, error)
+}

@@ -28,6 +28,7 @@ func SetupRoutes(
 	procurementHandler *handler.ProcurementHandler,
 	posHandler *handler.POSHandler,
 	prescriptionHandler *handler.PrescriptionHandler,
+	reportHandler *handler.ReportHandler,
 ) {
 	jwtAuth := middleware.JWTProtected(cfg, sessionStore)
 
@@ -235,4 +236,13 @@ func SetupRoutes(
 	rx.Get("/:id", prescriptionHandler.GetPrescriptionDetail)
 	rx.Put("/:id/status", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), prescriptionHandler.UpdateStatus)
 	rx.Post("/:id/dispense", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), prescriptionHandler.DispensePrescription)
+
+	// -------------------------------------------------------------
+	// 11. Reports & Financials (Laporan & Keuangan Cabang)
+	// -------------------------------------------------------------
+	reports := v1.Group("/reports")
+	reports.Use(jwtAuth)
+	reports.Get("/staff-performance", reportHandler.GetStaffPerformance)
+	reports.Get("/sales-summary", reportHandler.GetSalesSummary)
+	reports.Get("/category-margins", reportHandler.GetCategoryMargins)
 }
