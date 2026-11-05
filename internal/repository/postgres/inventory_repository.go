@@ -105,7 +105,8 @@ func (r *inventoryRepository) FindBatchesFEFO(ctx context.Context, branchID stri
 func (r *inventoryRepository) GetStockSummaryByBranch(ctx context.Context, branchID string, search string) ([]domain.StockSummaryResponse, error) {
 	var medicines []domain.Medicine
 	query := r.db.WithContext(ctx).
-		Preload("BaseUnit")
+		Preload("BaseUnit").
+		Preload("Prices")
 
 	if search != "" {
 		s := "%" + search + "%"
@@ -139,11 +140,26 @@ func (r *inventoryRepository) GetStockSummaryByBranch(ctx context.Context, branc
 			baseUnitName = med.BaseUnit.Name
 		}
 
+		var sellPrice float64
+		for _, pr := range med.Prices {
+			if pr.PriceType == domain.PriceTypeUmum && pr.Price > 0 {
+				sellPrice = pr.Price
+				break
+			}
+		}
+		if sellPrice == 0 && len(med.Prices) > 0 {
+			sellPrice = med.Prices[0].Price
+		}
+
 		results = append(results, domain.StockSummaryResponse{
 			MedicineID:     med.ID,
 			ItemCode:       med.ItemCode,
+			Barcode:        med.Barcode,
 			Name:           med.Name,
+			BaseUnitID:     med.BaseUnitID,
 			BaseUnitName:   baseUnitName,
+			SellPrice:      sellPrice,
+			Prices:         med.Prices,
 			TotalWarehouse: totalWh,
 			TotalShelf:     totalSh,
 			TotalStock:     totalWh + totalSh,

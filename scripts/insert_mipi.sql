@@ -87,4 +87,13 @@ INSERT INTO medicine_batches (
     qty_shelf = 10.00,
     total_stock = 15.00;
 
+-- 5. Insert Initial Stock Card Audit Trail (Mutations)
+INSERT INTO stock_mutations (
+    id, branch_id, medicine_id, batch_id, mutation_type, location, reference_no,
+    qty_in, qty_out, balance_after, total_after, notes, user_id, created_at
+) VALUES 
+    ('MUT000000000001', 'CBG000000000001', 'MED000000000004', 'BTC000000000004', 'PEMBELIAN', 'GUDANG', 'SALDO-AWAL-001', 5.00, 0.00, 5.00, 5.00, 'Stok Awal Fisik Gudang Belakang (Batch EFG146)', 'USR000000000001', NOW()),
+    ('MUT000000000002', 'CBG000000000001', 'MED000000000004', 'BTC000000000004', 'PEMBELIAN', 'RAK', 'SALDO-AWAL-001', 10.00, 0.00, 10.00, 15.00, 'Stok Awal Fisik Rak Penjualan (Batch EFG146)', 'USR000000000001', NOW())
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;

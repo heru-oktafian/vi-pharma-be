@@ -36,6 +36,14 @@ func (r *posRepository) GenerateInvoiceNumber(ctx context.Context, branchID stri
 }
 
 func (r *posRepository) CreateSale(ctx context.Context, sale *domain.Sale) error {
+	// Fallback to valid Superadmin user if cashierID is empty or SYSTEM to prevent FK failure
+	if sale.CashierID == "" || sale.CashierID == "SYSTEM" {
+		sale.CashierID = "USR000000000001"
+	}
+	if sale.BranchID == "" {
+		sale.BranchID = "CBG000000000001"
+	}
+
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 1. Process each sale item & deduct from shelf stock (FEFO)
 		for i := range sale.Items {

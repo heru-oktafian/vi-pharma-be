@@ -584,4 +584,45 @@ func seedInitialData(db *gorm.DB) {
 
 		log.Printf("[SEEDER] MIPI Minyak Gosok 60ml with batch EFG146 (ED: 2029) seeded.")
 	}
+
+	// 9. Seed initial stock mutations for MIPI (for Digital Stock Card history)
+	var mipiMutCount int64
+	db.Model(&domain.StockMutation{}).Where("medicine_id = ?", "MED000000000004").Count(&mipiMutCount)
+	if mipiMutCount == 0 {
+		mutGudang := domain.StockMutation{
+			ID:           "MUT000000000001",
+			BranchID:     "CBG000000000001",
+			MedicineID:   "MED000000000004",
+			BatchID:      "BTC000000000004",
+			MutationType: domain.MutationPurchase,
+			Location:     domain.LocationWarehouse,
+			ReferenceNo:  "SALDO-AWAL-001",
+			QtyIn:        5,
+			QtyOut:       0,
+			BalanceAfter: 5,
+			TotalAfter:   5,
+			Notes:        "Stok Awal Fisik Gudang Belakang (Batch EFG146)",
+			UserID:       "USR000000000001",
+		}
+		_ = db.Create(&mutGudang).Error
+
+		mutRak := domain.StockMutation{
+			ID:           "MUT000000000002",
+			BranchID:     "CBG000000000001",
+			MedicineID:   "MED000000000004",
+			BatchID:      "BTC000000000004",
+			MutationType: domain.MutationPurchase,
+			Location:     domain.LocationShelf,
+			ReferenceNo:  "SALDO-AWAL-001",
+			QtyIn:        10,
+			QtyOut:       0,
+			BalanceAfter: 10,
+			TotalAfter:   15,
+			Notes:        "Stok Awal Fisik Rak Penjualan (Batch EFG146)",
+			UserID:       "USR000000000001",
+		}
+		_ = db.Create(&mutRak).Error
+
+		log.Printf("[SEEDER] Initial stock card mutations for MIPI seeded.")
+	}
 }

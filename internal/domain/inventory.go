@@ -234,8 +234,12 @@ type SubmitOpnameRequest struct {
 type StockSummaryResponse struct {
 	MedicineID     string           `json:"medicine_id"`
 	ItemCode       string           `json:"item_code"`
+	Barcode        string           `json:"barcode"`
 	Name           string           `json:"name"`
+	BaseUnitID     string           `json:"base_unit_id"`
 	BaseUnitName   string           `json:"base_unit_name"`
+	SellPrice      float64          `json:"sell_price"`
+	Prices         []MedicinePrice  `json:"prices,omitempty"`
 	TotalWarehouse float64          `json:"total_warehouse"`
 	TotalShelf     float64          `json:"total_shelf"`
 	TotalStock     float64          `json:"total_stock"`

@@ -364,11 +364,26 @@ func (u *inventoryUsecase) GetStockSummary(ctx context.Context, branchID, medici
 		baseUnitName = med.BaseUnit.Name
 	}
 
+	var sellPrice float64
+	for _, pr := range med.Prices {
+		if pr.PriceType == domain.PriceTypeUmum && pr.Price > 0 {
+			sellPrice = pr.Price
+			break
+		}
+	}
+	if sellPrice == 0 && len(med.Prices) > 0 {
+		sellPrice = med.Prices[0].Price
+	}
+
 	return &domain.StockSummaryResponse{
 		MedicineID:     med.ID,
 		ItemCode:       med.ItemCode,
+		Barcode:        med.Barcode,
 		Name:           med.Name,
+		BaseUnitID:     med.BaseUnitID,
 		BaseUnitName:   baseUnitName,
+		SellPrice:      sellPrice,
+		Prices:         med.Prices,
 		TotalWarehouse: totalWh,
 		TotalShelf:     totalSh,
 		TotalStock:     totalWh + totalSh,

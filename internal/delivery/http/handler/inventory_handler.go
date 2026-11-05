@@ -19,15 +19,18 @@ func NewInventoryHandler(invUsecase domain.InventoryUsecase) *InventoryHandler {
 	}
 }
 
-// Helper to get branch ID from locals or header/query
+// Helper to get branch ID from header, query, or locals
 func getBranchID(c *fiber.Ctx) string {
-	if branchID, ok := c.Locals("branchID").(string); ok && branchID != "" {
-		return branchID
-	}
 	if headerBranch := c.Get("X-Branch-Id"); headerBranch != "" {
 		return headerBranch
 	}
-	return c.Query("branch_id", "")
+	if queryBranch := c.Query("branch_id", ""); queryBranch != "" {
+		return queryBranch
+	}
+	if branchID, ok := c.Locals("branchID").(string); ok && branchID != "" {
+		return branchID
+	}
+	return "CBG000000000001"
 }
 
 // Helper to get user ID
@@ -35,7 +38,7 @@ func getUserID(c *fiber.Ctx) string {
 	if userID, ok := c.Locals("userID").(string); ok && userID != "" {
 		return userID
 	}
-	return "SYSTEM"
+	return "USR000000000001" // Safe fallback to Superadmin / Default User
 }
 
 // -------------------------------------------------------------
