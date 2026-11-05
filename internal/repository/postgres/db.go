@@ -509,4 +509,77 @@ func seedInitialData(db *gorm.DB) {
 
 		log.Printf("[SEEDER] Default sample medicines with packaging & prices seeded.")
 	}
+
+	// 8. Seed MIPI Minyak Gosok 60 ml (with physical batch ED: 2029)
+	var mipiCount int64
+	db.Model(&domain.Medicine{}).Where("barcode = ?", "8993430174989").Count(&mipiCount)
+	if mipiCount == 0 {
+		unitBtlID := "UNT000000000005"
+		catLuarID := "CAT000000000008"
+		med4ID := "MED000000000004"
+
+		med4 := domain.Medicine{
+			ID:                   med4ID,
+			ItemCode:             "OBT-00004",
+			Barcode:              "8993430174989",
+			Name:                 "MIPI Minyak Gosok Pereda Nyeri Otot 60 ml",
+			GenericName:          "Methyl Salicylate, Menthol, Camphor, Capsicum Oleoresin, Clove Oil",
+			NIE:                  "POM QD 061 606 731",
+			Manufacturer:         "PT Etercon Pharma (Novell)",
+			DosageForm:           "Cairan Obat Luar",
+			DrugClassification:   domain.DrugClassHerbal,
+			CategoryID:           catLuarID,
+			BaseUnitID:           unitBtlID,
+			RequiresPrescription: false,
+			MinStock:             5,
+			MaxStock:             100,
+			StorageLocation:      "Rak Minyak Gosok A-01",
+			DefaultSupplierID:    &pbf1ID,
+			IsActive:             true,
+			LabelType:            "luar",
+			DefaultSigna:         "Dioleskan & dipijat 10-15 menit pada area nyeri/pegal",
+			ConsumptionTime:      "Bila Perlu / Saat Nyeri",
+			DoseMorning:          "Secukupnya",
+			DoseNoon:             "Secukupnya",
+			DoseNight:            "Secukupnya",
+			WarningTags:          "Hanya Untuk Obat Luar,Hindari Area Mata dan Luka Terbuka,Tidak Untuk Anak < 2 Tahun",
+			SpecialInstructions:  "Simpan pada suhu di bawah 30°C. Jangan digunakan langsung di bawah lubang hidung.",
+			BUDDays:              90,
+		}
+		_ = db.Create(&med4).Error
+
+		unitsMed4 := []domain.MedicineUnit{
+			{ID: "MNU000000000010", MedicineID: med4ID, UnitID: unitBtlID, ConversionFactor: 1, IsBaseUnit: true, Barcode: "8993430174989"},
+		}
+		for _, u := range unitsMed4 {
+			_ = db.Create(&u).Error
+		}
+
+		pricesMed4 := []domain.MedicinePrice{
+			{ID: "MPR000000000010", MedicineID: med4ID, UnitID: unitBtlID, PriceType: domain.PriceTypeUmum, Price: 24500},
+			{ID: "MPR000000000011", MedicineID: med4ID, UnitID: unitBtlID, PriceType: domain.PriceTypeResep, Price: 25000},
+			{ID: "MPR000000000012", MedicineID: med4ID, UnitID: unitBtlID, PriceType: domain.PriceTypeMember, Price: 23000},
+		}
+		for _, p := range pricesMed4 {
+			_ = db.Create(&p).Error
+		}
+
+		// Seed initial physical batch: No. Batch EFG146, Expired Date 2029-07-31
+		expDate, _ := time.Parse("2006-01-02", "2029-07-31")
+		batchMipi := domain.MedicineBatch{
+			ID:           "BTC000000000004",
+			MedicineID:   med4ID,
+			BranchID:     "CBG000000000001",
+			BatchNumber:  "EFG146",
+			ExpiredDate:  expDate,
+			QtyWarehouse: 5,
+			QtyShelf:     10,
+			TotalStock:   15,
+			BuyPrice:     19500,
+			IsActive:     true,
+		}
+		_ = db.Create(&batchMipi).Error
+
+		log.Printf("[SEEDER] MIPI Minyak Gosok 60ml with batch EFG146 (ED: 2029) seeded.")
+	}
 }
