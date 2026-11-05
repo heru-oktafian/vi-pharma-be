@@ -125,3 +125,19 @@ func GenerateSaleID() string {
 func GenerateSaleItemID() string {
 	return generateIDWithPrefix("SIT")
 }
+
+// GeneratePrescriptionID generates a 15-character unique identifier for prescriptions (prefix "RXP")
+func GeneratePrescriptionID() string {
+	return generateIDWithPrefix("RXP")
+}
+
+// GeneratePrescriptionItemID generates a 15-character unique identifier for prescription items (prefix "RXI")
+func GeneratePrescriptionItemID() string {
+	return generateIDWithPrefix("RXI")
+}
+
+// GeneratePrescriptionCompoundItemID generates a 15-character unique identifier for prescription compound ingredients (prefix "RXC")
+func GeneratePrescriptionCompoundItemID() string {
+	return generateIDWithPrefix("RXC")
+}
+

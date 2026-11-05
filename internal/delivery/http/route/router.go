@@ -27,6 +27,7 @@ func SetupRoutes(
 	inventoryHandler *handler.InventoryHandler,
 	procurementHandler *handler.ProcurementHandler,
 	posHandler *handler.POSHandler,
+	prescriptionHandler *handler.PrescriptionHandler,
 ) {
 	jwtAuth := middleware.JWTProtected(cfg, sessionStore)
 
@@ -223,4 +224,15 @@ func SetupRoutes(
 	pos.Get("/transactions", posHandler.ListTransactions)
 	pos.Get("/transactions/:id", posHandler.GetTransactionByID)
 	pos.Get("/summary-today", posHandler.GetTodaySummary)
+
+	// -------------------------------------------------------------
+	// 10. Prescription & Compounding (Pelayanan Resep & Farmasi)
+	// -------------------------------------------------------------
+	rx := v1.Group("/prescriptions")
+	rx.Use(jwtAuth)
+	rx.Post("", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), prescriptionHandler.CreatePrescription)
+	rx.Get("", prescriptionHandler.ListPrescriptions)
+	rx.Get("/:id", prescriptionHandler.GetPrescriptionDetail)
+	rx.Put("/:id/status", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), prescriptionHandler.UpdateStatus)
+	rx.Post("/:id/dispense", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), prescriptionHandler.DispensePrescription)
 }
