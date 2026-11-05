@@ -61,11 +61,11 @@ func (r *procurementRepository) FindAllPurchaseOrders(ctx context.Context, branc
 		query = query.Where("supplier_id = ?", filter.SupplierID)
 	}
 
-	if filter.SPType != "" {
+	if filter.SPType != "" && filter.SPType != "ALL" {
 		query = query.Where("sp_type = ?", filter.SPType)
 	}
 
-	if filter.Status != "" {
+	if filter.Status != "" && filter.Status != "ALL" {
 		query = query.Where("status = ?", filter.Status)
 	}
 

@@ -209,11 +209,11 @@ func SetupRoutes(
 	proc.Use(jwtAuth)
 
 	// Purchase Orders / Surat Pesanan (SP)
-	proc.Post("/orders", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), procurementHandler.CreatePurchaseOrder)
+	proc.Post("/orders", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist, domain.RoleInventory), procurementHandler.CreatePurchaseOrder)
 	proc.Get("/orders", procurementHandler.ListPurchaseOrders)
 	proc.Get("/orders/:id", procurementHandler.GetPurchaseOrderByID)
-	proc.Put("/orders/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), procurementHandler.UpdatePurchaseOrder)
-	proc.Patch("/orders/:id/status", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), procurementHandler.UpdatePOStatus)
+	proc.Put("/orders/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist, domain.RoleInventory), procurementHandler.UpdatePurchaseOrder)
+	proc.Patch("/orders/:id/status", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist, domain.RoleInventory), procurementHandler.UpdatePOStatus)
 	proc.Delete("/orders/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), procurementHandler.DeletePurchaseOrder)
 
 	// -------------------------------------------------------------

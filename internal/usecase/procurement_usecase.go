@@ -13,18 +13,49 @@ type procurementUsecase struct {
 	procRepo domain.ProcurementRepository
 	supRepo  domain.SupplierRepository
 	medRepo  domain.MedicineRepository
+	unitRepo domain.UnitRepository
 }
 
 func NewProcurementUsecase(
 	procRepo domain.ProcurementRepository,
 	supRepo domain.SupplierRepository,
 	medRepo domain.MedicineRepository,
+	unitRepo domain.UnitRepository,
 ) domain.ProcurementUsecase {
 	return &procurementUsecase{
 		procRepo: procRepo,
 		supRepo:  supRepo,
 		medRepo:  medRepo,
+		unitRepo: unitRepo,
 	}
+}
+
+// resolveUnitID safely determines a valid unit ID from the input, the medicine, or the database
+func (u *procurementUsecase) resolveUnitID(ctx context.Context, medicineID, rawUnitID string) string {
+	// 1. Direct match by Unit ID if provided
+	if rawUnitID != "" {
+		if uObj, err := u.unitRepo.FindByID(ctx, rawUnitID); err == nil && uObj != nil {
+			return uObj.ID
+		}
+		// 2. Search by name or symbol (e.g. "Box", "Pcs", "Botol", "Tablet")
+		if units, err := u.unitRepo.FindAll(ctx, rawUnitID, true); err == nil && len(units) > 0 {
+			return units[0].ID
+		}
+	}
+
+	// 3. Fallback to medicine's base_unit_id
+	if medicineID != "" {
+		if med, err := u.medRepo.FindByID(ctx, medicineID); err == nil && med != nil && med.BaseUnitID != "" {
+			return med.BaseUnitID
+		}
+	}
+
+	// 4. Default to first active unit in database
+	if allUnits, err := u.unitRepo.FindAll(ctx, "", true); err == nil && len(allUnits) > 0 {
+		return allUnits[0].ID
+	}
+
+	return "UNT000000000001"
 }
 
 func (u *procurementUsecase) CreatePurchaseOrder(
@@ -59,6 +90,7 @@ func (u *procurementUsecase) CreatePurchaseOrder(
 	var totalEstimated float64
 
 	for _, it := range req.Items {
+		validUnitID := u.resolveUnitID(ctx, it.MedicineID, it.UnitID)
 		itemSubtotal := it.QtyOrdered * it.EstimatedPrice
 		totalEstimated += itemSubtotal
 
@@ -66,7 +98,7 @@ func (u *procurementUsecase) CreatePurchaseOrder(
 			ID:              utils.GeneratePurchaseOrderItemID(),
 			PurchaseOrderID: poID,
 			MedicineID:      it.MedicineID,
-			UnitID:          it.UnitID,
+			UnitID:          validUnitID,
 			QtyOrdered:      it.QtyOrdered,
 			QtyReceived:     0,
 			EstimatedPrice:  it.EstimatedPrice,
@@ -193,13 +225,14 @@ func (u *procurementUsecase) UpdatePurchaseOrder(
 	if len(req.Items) > 0 {
 		var totalEstimated float64
 		for _, it := range req.Items {
+			validUnitID := u.resolveUnitID(ctx, it.MedicineID, it.UnitID)
 			subtotal := it.QtyOrdered * it.EstimatedPrice
 			totalEstimated += subtotal
 			items = append(items, domain.PurchaseOrderItem{
 				ID:              utils.GeneratePurchaseOrderItemID(),
 				PurchaseOrderID: po.ID,
 				MedicineID:      it.MedicineID,
-				UnitID:          it.UnitID,
+				UnitID:          validUnitID,
 				QtyOrdered:      it.QtyOrdered,
 				QtyReceived:     0,
 				EstimatedPrice:  it.EstimatedPrice,

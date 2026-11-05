@@ -70,7 +70,7 @@ func main() {
 	doctorUsecase := usecase.NewDoctorUsecase(doctorRepo)
 	medicineUsecase := usecase.NewMedicineUsecase(medicineRepo, categoryRepo, unitRepo)
 	inventoryUsecase := usecase.NewInventoryUsecase(inventoryRepo, medicineRepo)
-	procurementUsecase := usecase.NewProcurementUsecase(procurementRepo, supplierRepo, medicineRepo)
+	procurementUsecase := usecase.NewProcurementUsecase(procurementRepo, supplierRepo, medicineRepo, unitRepo)
 	posUsecase := usecase.NewPOSUsecase(posRepo, db)
 	prescriptionUsecase := usecase.NewPrescriptionUsecase(prescriptionRepo, medicineRepo, db)
 	reportUsecase := usecase.NewReportUsecase(reportRepo)
