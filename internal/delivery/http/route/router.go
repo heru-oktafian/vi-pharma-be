@@ -26,6 +26,7 @@ func SetupRoutes(
 	medicineHandler *handler.MedicineHandler,
 	inventoryHandler *handler.InventoryHandler,
 	procurementHandler *handler.ProcurementHandler,
+	posHandler *handler.POSHandler,
 ) {
 	jwtAuth := middleware.JWTProtected(cfg, sessionStore)
 
@@ -211,4 +212,14 @@ func SetupRoutes(
 	proc.Put("/orders/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), procurementHandler.UpdatePurchaseOrder)
 	proc.Patch("/orders/:id/status", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), procurementHandler.UpdatePOStatus)
 	proc.Delete("/orders/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), procurementHandler.DeletePurchaseOrder)
+
+	// -------------------------------------------------------------
+	// 9. Point of Sale & Cashier (Kasir & Penjualan POS)
+	// -------------------------------------------------------------
+	pos := v1.Group("/pos")
+	pos.Use(jwtAuth)
+	pos.Post("/transactions", posHandler.CreateTransaction)
+	pos.Get("/transactions", posHandler.ListTransactions)
+	pos.Get("/transactions/:id", posHandler.GetTransactionByID)
+	pos.Get("/summary-today", posHandler.GetTodaySummary)
 }

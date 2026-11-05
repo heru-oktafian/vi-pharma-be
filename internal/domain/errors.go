@@ -36,5 +36,8 @@ var (
 	ErrPurchaseOrderNotFound      = errors.New("surat pesanan / purchase order tidak ditemukan")
 	ErrPOAlreadyProcessed         = errors.New("surat pesanan sudah diproses atau selesai dan tidak dapat diubah")
 	ErrNarcoticSingleItemOnly     = errors.New("surat pesanan narkotika resmi hanya boleh berisi 1 item obat per surat pesanan")
+	ErrSaleNotFound               = errors.New("transaksi penjualan kasir tidak ditemukan")
+	ErrInvalidPaymentAmount       = errors.New("nominal pembayaran kurang dari total tagihan belanja")
+	ErrCartEmpty                  = errors.New("keranjang belanja kasir masih kosong")
 	ErrInternalServer             = errors.New("internal server error")
 )

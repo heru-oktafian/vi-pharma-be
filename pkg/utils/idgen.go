@@ -115,3 +115,13 @@ func GeneratePurchaseOrderID() string {
 func GeneratePurchaseOrderItemID() string {
 	return generateIDWithPrefix("POI")
 }
+
+// GenerateSaleID generates a 15-character unique identifier for POS sales transactions (prefix "SAL")
+func GenerateSaleID() string {
+	return generateIDWithPrefix("SAL")
+}
+
+// GenerateSaleItemID generates a 15-character unique identifier for sale items (prefix "SIT")
+func GenerateSaleItemID() string {
+	return generateIDWithPrefix("SIT")
+}

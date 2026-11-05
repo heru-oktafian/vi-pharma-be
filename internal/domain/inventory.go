@@ -39,9 +39,10 @@ const (
 type PaymentStatus string
 
 const (
-	PaymentStatusPaid    PaymentStatus = "PAID"
-	PaymentStatusUnpaid  PaymentStatus = "UNPAID"
-	PaymentStatusPartial PaymentStatus = "PARTIAL"
+	PaymentStatusPaid      PaymentStatus = "PAID"
+	PaymentStatusUnpaid    PaymentStatus = "UNPAID"
+	PaymentStatusPartial   PaymentStatus = "PARTIAL"
+	PaymentStatusCancelled PaymentStatus = "CANCELLED"
 )
 
 // OpnameStatus represents cycle counting status
