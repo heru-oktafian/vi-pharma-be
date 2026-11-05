@@ -61,7 +61,7 @@ func (r *reportRepository) GetStaffPerformanceReport(ctx context.Context, filter
 		SELECT 
 			s.cashier_id as user_id,
 			COALESCE(u.name, 'Petugas Kasir') as user_name,
-			COALESCE(u.role, 'cashier') as user_role,
+			COALESCE(u.user_role::text, 'cashier') as user_role,
 			COUNT(DISTINCT s.id) as total_transactions,
 			COALESCE(SUM(si.total), 0) as total_revenue,
 			COALESCE(SUM(si.qty_base * COALESCE(b.buy_price, 0)), 0) as total_cogs
@@ -72,7 +72,7 @@ func (r *reportRepository) GetStaffPerformanceReport(ctx context.Context, filter
 		WHERE s.branch_id = ? 
 		  AND s.payment_status = 'PAID'
 		  AND s.created_at BETWEEN ? AND ?
-		GROUP BY s.cashier_id, u.name, u.role
+		GROUP BY s.cashier_id, u.name, u.user_role
 	`, branchID, startDateTime, endDateTime).Scan(&cashierStats).Error
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func (r *reportRepository) GetStaffPerformanceReport(ctx context.Context, filter
 		SELECT 
 			p.pharmacist_id as user_id,
 			COALESCE(u.name, 'Apoteker Pelayan') as user_name,
-			COALESCE(u.role, 'pharmacist') as user_role,
+			COALESCE(u.user_role::text, 'pharmacist') as user_role,
 			COUNT(DISTINCT p.id) as rx_count,
 			COALESCE(SUM(p.grand_total), 0) as rx_revenue,
 			COALESCE(SUM(p.total_tuslah), 0) as total_tuslah
@@ -103,7 +103,7 @@ func (r *reportRepository) GetStaffPerformanceReport(ctx context.Context, filter
 		  AND p.status IN ('SIAP', 'SELESAI')
 		  AND p.created_at BETWEEN ? AND ?
 		  AND p.pharmacist_id IS NOT NULL
-		GROUP BY p.pharmacist_id, u.name, u.role
+		GROUP BY p.pharmacist_id, u.name, u.user_role
 	`, branchID, startDateTime, endDateTime).Scan(&pharmacistStats)
 
 	// 4. Merge stats into unified staff performance map
