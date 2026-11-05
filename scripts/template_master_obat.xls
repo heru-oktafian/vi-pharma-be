@@ -1,0 +1,435 @@
+<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+  <Author>Vi-Pharma System</Author>
+  <LastAuthor>Vi-Pharma System</LastAuthor>
+  <Created>2026-11-05T21:00:00Z</Created>
+  <Company>Vi-Pharma Medika</Company>
+  <Version>16.00</Version>
+ </DocumentProperties>
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Center"/>
+   <Borders/>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Color="#1E293B"/>
+   <Interior/>
+   <NumberFormat/>
+   <Protection/>
+  </Style>
+  <Style ss:ID="Title">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="16" ss:Bold="1" ss:Color="#0F172A"/>
+  </Style>
+  <Style ss:ID="Subtitle">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="10" ss:Italic="1" ss:Color="#64748B"/>
+  </Style>
+  <Style ss:ID="HeaderIdent">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#0369A1"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#0369A1"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#0369A1"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#0369A1"/>
+   </Borders>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="10" ss:Color="#FFFFFF" ss:Bold="1"/>
+   <Interior ss:Color="#0284C7" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="HeaderClass">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#334155"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#334155"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#334155"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#334155"/>
+   </Borders>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="10" ss:Color="#FFFFFF" ss:Bold="1"/>
+   <Interior ss:Color="#1E293B" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="HeaderEtiket">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#6D28D9"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#6D28D9"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#6D28D9"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#6D28D9"/>
+   </Borders>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="10" ss:Color="#FFFFFF" ss:Bold="1"/>
+   <Interior ss:Color="#7C3AED" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="HeaderPrice">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#047857"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#047857"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#047857"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#047857"/>
+   </Borders>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="10" ss:Color="#FFFFFF" ss:Bold="1"/>
+   <Interior ss:Color="#059669" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="HeaderHint">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+   </Borders>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="9" ss:Italic="1" ss:Color="#64748B"/>
+   <Interior ss:Color="#F8FAFC" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="CellText">
+   <Alignment ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+   <NumberFormat ss:Format="@"/>
+  </Style>
+  <Style ss:ID="CellCenter">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+   <NumberFormat ss:Format="@"/>
+  </Style>
+  <Style ss:ID="CellNumber">
+   <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+   <NumberFormat ss:Format="#,##0"/>
+  </Style>
+  <Style ss:ID="CellMoney">
+   <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Color="#0F172A" ss:Bold="1"/>
+   <NumberFormat ss:Format="&quot;Rp &quot;#,##0"/>
+  </Style>
+  <Style ss:ID="RefHeader">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#047857"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#047857"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#047857"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#047857"/>
+   </Borders>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Color="#FFFFFF" ss:Bold="1"/>
+   <Interior ss:Color="#047857" ss:Pattern="Solid"/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="Master Farmasi &amp; Alkes">
+  <Table ss:DefaultRowHeight="20">
+   <Column ss:Width="130"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="250"/>
+   <Column ss:Width="200"/>
+   <Column ss:Width="150"/>
+   <Column ss:Width="170"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="180"/>
+   <Column ss:Width="160"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="120"/>
+   <Column ss:Width="220"/>
+   <Column ss:Width="160"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="200"/>
+   <Column ss:Width="220"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="140"/>
+   <Row ss:Height="26">
+    <Cell ss:MergeAcross="25" ss:StyleID="Title"><Data ss:Type="String">TEMPLATE IMPORT MASTER DATA FARMASI &amp; ALKES - VI-PHARMA APOTEK</Data></Cell>
+   </Row>
+   <Row ss:Height="18">
+    <Cell ss:MergeAcross="25" ss:StyleID="Subtitle"><Data ss:Type="String">Petunjuk: Kolom bertanda (*) WAJIB diisi. Simpan file ini sebagai .CSV atau gunakan query SQL pendamping untuk eksekusi kolektif.</Data></Cell>
+   </Row>
+   <Row ss:Height="28">
+    <Cell ss:StyleID="HeaderIdent"><Data ss:Type="String">KODE OBAT (*)</Data></Cell>
+    <Cell ss:StyleID="HeaderIdent"><Data ss:Type="String">BARCODE</Data></Cell>
+    <Cell ss:StyleID="HeaderIdent"><Data ss:Type="String">NAMA OBAT / PRODUK (*)</Data></Cell>
+    <Cell ss:StyleID="HeaderIdent"><Data ss:Type="String">NAMA GENERIK / KANDUNGAN</Data></Cell>
+    <Cell ss:StyleID="HeaderIdent"><Data ss:Type="String">NIE BPOM / KEMENKES</Data></Cell>
+    <Cell ss:StyleID="HeaderIdent"><Data ss:Type="String">PRODUSEN / PABRIK</Data></Cell>
+    <Cell ss:StyleID="HeaderClass"><Data ss:Type="String">BENTUK SEDIAAN</Data></Cell>
+    <Cell ss:StyleID="HeaderClass"><Data ss:Type="String">GOLONGAN BPOM (*)</Data></Cell>
+    <Cell ss:StyleID="HeaderClass"><Data ss:Type="String">KATEGORI TERAPI (*)</Data></Cell>
+    <Cell ss:StyleID="HeaderClass"><Data ss:Type="String">SATUAN DASAR / TERKECIL (*)</Data></Cell>
+    <Cell ss:StyleID="HeaderClass"><Data ss:Type="String">PERLU RESEP (Y/N)</Data></Cell>
+    <Cell ss:StyleID="HeaderClass"><Data ss:Type="String">MIN STOK</Data></Cell>
+    <Cell ss:StyleID="HeaderClass"><Data ss:Type="String">MAX STOK</Data></Cell>
+    <Cell ss:StyleID="HeaderClass"><Data ss:Type="String">LOKASI RAK / GUDANG</Data></Cell>
+    <Cell ss:StyleID="HeaderEtiket"><Data ss:Type="String">JENIS ETIKET (*)</Data></Cell>
+    <Cell ss:StyleID="HeaderEtiket"><Data ss:Type="String">ATURAN PAKAI / SIGNA</Data></Cell>
+    <Cell ss:StyleID="HeaderEtiket"><Data ss:Type="String">WAKTU MINUM</Data></Cell>
+    <Cell ss:StyleID="HeaderEtiket"><Data ss:Type="String">DOSIS PAGI</Data></Cell>
+    <Cell ss:StyleID="HeaderEtiket"><Data ss:Type="String">DOSIS SIANG</Data></Cell>
+    <Cell ss:StyleID="HeaderEtiket"><Data ss:Type="String">DOSIS MALAM</Data></Cell>
+    <Cell ss:StyleID="HeaderEtiket"><Data ss:Type="String">PERINGATAN KHUSUS</Data></Cell>
+    <Cell ss:StyleID="HeaderEtiket"><Data ss:Type="String">PETUNJUK KHUSUS</Data></Cell>
+    <Cell ss:StyleID="HeaderEtiket"><Data ss:Type="String">BUD (HARI)</Data></Cell>
+    <Cell ss:StyleID="HeaderPrice"><Data ss:Type="String">HARGA JUAL UMUM (*)</Data></Cell>
+    <Cell ss:StyleID="HeaderPrice"><Data ss:Type="String">HARGA JUAL RESEP</Data></Cell>
+    <Cell ss:StyleID="HeaderPrice"><Data ss:Type="String">HARGA JUAL MEMBER</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Wajib, unik (contoh: OBT-00005, ALK-00001)</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Opsional / barcode kemasan</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Wajib, nama dagang lengkap</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Zat aktif farmasi</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Nomor Izin Edar resmi</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Industri farmasi / manufaktur</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Tablet, Kapsul, Sirup, Salep, Cairan, dsb.</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">bebas, bebas_terbatas, keras, narkotika, psikotropika, alkes, herbal, suplemen</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Nama kategori atau ID (CAT000000000001 s/d 08)</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Nama satuan atau ID (UNT000000000001 s/d 10)</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Y atau N (otomatis Y jika keras/narkotik)</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Batas peringatan stok menipis (default: 10)</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Batas kapasitas maksimal stok (default: 1000)</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Lokasi penyimpanan rak apotek</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">dalam (Putih) atau luar (Biru)</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Template signa etiket cetak</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Sebelum/Sesudah Makan, Pagi/Malam, dsb.</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Dosis pagi (default: 1)</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Dosis siang (default: 1)</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Dosis malam (default: 1)</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Label peringatan tambahan (pisahkan koma)</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Instruksi edukasi pasien</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Beyond Use Date dalam hari (0 = ikut ED batch)</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Tarif jual kasir reguler OTC</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Tarif jual resep dokter (opsional)</Data></Cell>
+    <Cell ss:StyleID="HeaderHint"><Data ss:Type="String">Tarif khusus member/pelanggan setia</Data></Cell>
+   </Row>
+   <Row ss:Height="22">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">OBT-00005</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">8991234560055</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Cefixime 200 mg Kapsul</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Cefixime Trihydrate</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">GKL1505047801A1</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">PT Dexa Medica</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Kapsul</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">keras</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Antibiotik</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Kapsul</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">Y</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">20</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">500</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Rak A-02 (Antibiotik)</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">dalam</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">2 x Sehari 1 Kapsul (Tiap 12 Jam)</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Sesudah Makan</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">1</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">0</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">1</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Harus Dihabiskan (Antibiotik)</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Minum pada jam yang sama tiap 12 jam</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">4500</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">5000</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">4200</Data></Cell>
+   </Row>
+   <Row ss:Height="22">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">OBT-00006</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">8992779110012</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Sanmol Sirup 120 mg/5 ml (60 ml)</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Paracetamol</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">DBL7622204137A1</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">PT Sanbe Farma</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Sirup</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">bebas</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Analgesik &amp; Antipiretik</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Botol</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">N</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">15</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">200</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Rak B-01 (Sirup Anak)</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">dalam</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">3 x Sehari 1 Sendok Takar (5 ml)</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Sesudah Makan (Bila Demam)</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">1 Cth</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">1 Cth</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">1 Cth</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Kocok Dahulu, Hentikan jika demam reda</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Gunakan sendok takar yang tersedia</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">30</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">22000</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">23000</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">21000</Data></Cell>
+   </Row>
+   <Row ss:Height="22">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">OBT-00007</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">8993214560077</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Salep Kulit Pi Kang Shuang 5 gr</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Triamcinolone Acetonide + Miconazole</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">DTL9123405629A1</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">PT Bina San Prima</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Salep / Krim</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">bebas_terbatas</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Obat Luar &amp; Kulit</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Tube</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">N</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">10</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">100</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Rak C-03 (Salep &amp; Krim)</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">luar</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Oles tipis 2-3 x sehari pada kulit gatal/sakit</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Pagi dan Malam (Setelah Mandi)</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">Secukupnya</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">Secukupnya</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">Secukupnya</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Hanya Untuk Obat Luar, Hindari Area Mata</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Bersihkan area kulit terlebih dahulu sebelum dioles</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">30</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">14500</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">15500</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">13500</Data></Cell>
+   </Row>
+   <Row ss:Height="22">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">ALK-00001</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">8994567890123</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Kassa Steril Husada 16x16 cm (Isi 10)</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Kassa Hidrofil Steril</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">AKD 11603510245</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">PT Husada Farma</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Pembalut Luka</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">alkes</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Obat Luar &amp; Kulit</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Box</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">N</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">10</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">150</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Rak Alkes D-01</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">luar</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Gunakan untuk menutup luka yang telah dibersihkan</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Saat Ganti Perban</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">1</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">0</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">1</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Sekali Pakai, Jangan Digunakan Jika Kemasan Rusak</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Simpan di tempat bersih dan kering</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">12000</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">12000</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">11000</Data></Cell>
+   </Row>
+   <Row ss:Height="22">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">ALK-00002</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">8995678901234</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Spuit / Jarum Suntik 3 cc OneMed</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Disposable Syringe 3 ml with Needle</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">AKD 20902900254</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">PT Jayamas Medica Industri (OneMed)</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Alat Suntik</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">alkes</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Obat Luar &amp; Kulit</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Pcs</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">N</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">50</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">500</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Rak Alkes D-02</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">luar</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Digunakan oleh tenaga medis berwenang</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Sesuai Tindakan Medis</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">1</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">0</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">0</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Single Use Only (Sekali Pakai), Steril</Data></Cell>
+    <Cell ss:StyleID="CellText"><Data ss:Type="String">Buang ke dalam safety box setelah digunakan</Data></Cell>
+    <Cell ss:StyleID="CellNumber"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">2500</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">2500</Data></Cell>
+    <Cell ss:StyleID="CellMoney"><Data ss:Type="Number">2200</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <FreezePanes/>
+   <FrozenNoSplit/>
+   <SplitPane>
+    <PaneNumber>3</PaneNumber>
+    <RowNumber>4</RowNumber>
+   </SplitPane>
+   <ActivePane>2</ActivePane>
+  </WorksheetOptions>
+ </Worksheet>
+ <Worksheet ss:Name="Daftar Referensi Sistem">
+  <Table ss:DefaultRowHeight="20">
+   <Column ss:Width="140"/>
+   <Column ss:Width="200"/>
+   <Column ss:Width="260"/>
+   <Row ss:Height="24">
+    <Cell ss:MergeAcross="2" ss:StyleID="Title"><Data ss:Type="String">DAFTAR KODE REFERENSI MASTER (DATABASE VI-PHARMA)</Data></Cell>
+   </Row>
+   <Row ss:Height="10"></Row>
+
+   <!-- Golongan BPOM -->
+   <Row ss:Height="24">
+    <Cell ss:MergeAcross="2" ss:StyleID="RefHeader"><Data ss:Type="String">1. GOLONGAN BPOM (Pilihan Valid di Kolom golongan_bpom)</Data></Cell>
+   </Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">bebas</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Obat Bebas</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Lingkaran Hijau Garis Tepi Hitam (OTC)</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">bebas_terbatas</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Obat Bebas Terbatas</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Lingkaran Biru Garis Tepi Hitam (P1-P6)</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">keras</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Obat Keras (Daftar G)</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Lingkaran Merah Huruf K (Resep Dokter)</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">narkotika</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Narkotika (Daftar O)</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Palang Merah Medali (Regulasi Ketat)</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">psikotropika</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Psikotropika</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Obat Penenang / SSP (Resep Dokter)</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">alkes</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Alat Kesehatan &amp; BMHP</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Kassa, Spuit, Plester, Masker, Handscoon</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">herbal</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Obat Tradisional / Jamu / OHT</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Minyak Telon, Minyak Gosok, Tolak Angin, dll</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">suplemen</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Suplemen Makanan / Vitamin</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Ester C, Blackmores, Enervon C, dll</Data></Cell></Row>
+   <Row ss:Height="10"></Row>
+
+   <!-- Kategori Terapi -->
+   <Row ss:Height="24">
+    <Cell ss:MergeAcross="2" ss:StyleID="RefHeader"><Data ss:Type="String">2. KATEGORI TERAPI (Bisa ketik Nama atau ID)</Data></Cell>
+   </Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">CAT000000000001</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Antibiotik</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Obat pembunuh atau penghambat bakteri</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">CAT000000000002</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Analgesik &amp; Antipiretik</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Pereda nyeri dan penurun demam</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">CAT000000000003</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Vitamin &amp; Suplemen</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Multivitamin dan daya tahan tubuh</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">CAT000000000004</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Saluran Cerna</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Antasida, anti-maag, dan pencernaan</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">CAT000000000005</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Antihipertensi &amp; Jantung</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Pengontrol tekanan darah dan jantung</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">CAT000000000006</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Antidiabetes</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Pengontrol gula darah</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">CAT000000000007</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Antihistamin &amp; Alergi</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Pereda alergi dan gatal</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">CAT000000000008</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Obat Luar &amp; Kulit</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Salep, krim antijamur, antiseptik, alkes luar</Data></Cell></Row>
+   <Row ss:Height="10"></Row>
+
+   <!-- Satuan Dasar -->
+   <Row ss:Height="24">
+    <Cell ss:MergeAcross="2" ss:StyleID="RefHeader"><Data ss:Type="String">3. SATUAN DASAR / KEMASAN TERKECIL (Bisa ketik Nama atau ID)</Data></Cell>
+   </Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">UNT000000000001</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Tablet</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Satuan sediaan padat tablet</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">UNT000000000002</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Strip</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Kemasan blister / strip</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">UNT000000000003</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Box</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Kemasan kotak / dus</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">UNT000000000004</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Kapsul</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Satuan sediaan kapsul</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">UNT000000000005</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Botol</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Kemasan botol sirup / cairan</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">UNT000000000006</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Tube</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Kemasan tube salep / gel / krim</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">UNT000000000007</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Sachet</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Kemasan sachet serbuk / granul</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">UNT000000000008</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Ampul</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Sediaan injeksi ampul</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">UNT000000000009</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Vial</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Sediaan injeksi vial</Data></Cell></Row>
+   <Row><Cell ss:StyleID="CellCenter"><Data ss:Type="String">UNT000000000010</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Pcs</Data></Cell><Cell ss:StyleID="CellText"><Data ss:Type="String">Satuan pieces alat kesehatan / BMHP</Data></Cell></Row>
+  </Table>
+ </Worksheet>
+</Workbook>
