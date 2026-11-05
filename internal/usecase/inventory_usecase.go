@@ -338,6 +338,123 @@ func (u *inventoryUsecase) ReturnToWarehouse(
 	return batch, nil
 }
 
+func (u *inventoryUsecase) CreateInitialStockBatch(
+	ctx context.Context,
+	branchID, userID string,
+	req *domain.CreateInitialBatchRequest,
+) (*domain.MedicineBatch, error) {
+	if req.MedicineID == "" {
+		return nil, fmt.Errorf("obat wajib dipilih")
+	}
+	if req.BatchNumber == "" {
+		return nil, fmt.Errorf("nomor batch wajib diisi")
+	}
+	if req.QtyWarehouse < 0 || req.QtyShelf < 0 || (req.QtyWarehouse+req.QtyShelf) <= 0 {
+		return nil, fmt.Errorf("total stok fisik awal (gudang + rak) harus lebih dari 0")
+	}
+
+	// Verify medicine exists
+	med, err := u.medRepo.FindByID(ctx, req.MedicineID)
+	if err != nil {
+		return nil, fmt.Errorf("obat tidak ditemukan: %w", err)
+	}
+
+	expDate, err := time.Parse("2006-01-02", req.ExpiredDate)
+	if err != nil {
+		return nil, fmt.Errorf("format tanggal kadaluarsa (ED) tidak valid (gunakan format YYYY-MM-DD)")
+	}
+
+	// Safe fallbacks for userID and branchID
+	if userID == "" || userID == "SYSTEM" {
+		userID = "USR000000000001"
+	}
+	if branchID == "" {
+		branchID = "CBG000000000001"
+	}
+
+	// Check if batch with this number already exists for this medicine in this branch
+	existingBatch, err := u.invRepo.FindBatchByNumberAndMedicine(ctx, branchID, req.MedicineID, req.BatchNumber)
+	var batch *domain.MedicineBatch
+	if err == nil && existingBatch != nil {
+		// Existing batch: increment stock
+		batch = existingBatch
+		batch.QtyWarehouse += req.QtyWarehouse
+		batch.QtyShelf += req.QtyShelf
+		batch.CalculateTotal()
+		if req.BuyPrice > 0 {
+			batch.BuyPrice = req.BuyPrice
+		}
+		batch.ExpiredDate = expDate
+		batch.IsActive = true
+		if err := u.invRepo.UpdateBatch(ctx, batch); err != nil {
+			return nil, fmt.Errorf("gagal memperbarui batch: %w", err)
+		}
+	} else {
+		// New batch
+		batch = &domain.MedicineBatch{
+			ID:           utils.GenerateBatchID(),
+			MedicineID:   req.MedicineID,
+			BranchID:     branchID,
+			BatchNumber:  req.BatchNumber,
+			ExpiredDate:  expDate,
+			QtyWarehouse: req.QtyWarehouse,
+			QtyShelf:     req.QtyShelf,
+			TotalStock:   req.QtyWarehouse + req.QtyShelf,
+			BuyPrice:     req.BuyPrice,
+			IsActive:     true,
+		}
+		if err := u.invRepo.CreateBatch(ctx, batch); err != nil {
+			return nil, fmt.Errorf("gagal mencatat batch baru: %w", err)
+		}
+	}
+
+	refNo := fmt.Sprintf("SALDO-AWAL-%s-%d", batch.BatchNumber, time.Now().Unix())
+	userNotes := req.Notes
+	if userNotes == "" {
+		userNotes = fmt.Sprintf("Saldo awal fisik batch %s (%s)", batch.BatchNumber, med.Name)
+	}
+
+	// Record mutation for Gudang if QtyWarehouse > 0
+	if req.QtyWarehouse > 0 {
+		_ = u.invRepo.CreateMutation(ctx, &domain.StockMutation{
+			ID:           utils.GenerateStockMutationID(),
+			BranchID:     branchID,
+			MedicineID:   req.MedicineID,
+			BatchID:      batch.ID,
+			MutationType: domain.MutationInitialBalance,
+			Location:     domain.LocationWarehouse,
+			ReferenceNo:  refNo,
+			QtyIn:        req.QtyWarehouse,
+			QtyOut:       0,
+			BalanceAfter: batch.QtyWarehouse,
+			TotalAfter:   batch.QtyWarehouse,
+			Notes:        fmt.Sprintf("%s (Gudang Belakang)", userNotes),
+			UserID:       userID,
+		})
+	}
+
+	// Record mutation for Rak if QtyShelf > 0
+	if req.QtyShelf > 0 {
+		_ = u.invRepo.CreateMutation(ctx, &domain.StockMutation{
+			ID:           utils.GenerateStockMutationID(),
+			BranchID:     branchID,
+			MedicineID:   req.MedicineID,
+			BatchID:      batch.ID,
+			MutationType: domain.MutationInitialBalance,
+			Location:     domain.LocationShelf,
+			ReferenceNo:  refNo,
+			QtyIn:        req.QtyShelf,
+			QtyOut:       0,
+			BalanceAfter: batch.QtyShelf,
+			TotalAfter:   batch.TotalStock,
+			Notes:        fmt.Sprintf("%s (Rak Penjualan Kasir)", userNotes),
+			UserID:       userID,
+		})
+	}
+
+	return batch, nil
+}
+
 // -------------------------------------------------------------
 // Stock Summaries & Digital Stock Card
 // -------------------------------------------------------------

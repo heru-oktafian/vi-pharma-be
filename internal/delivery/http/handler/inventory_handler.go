@@ -191,6 +191,27 @@ func (h *InventoryHandler) ReturnToWarehouse(c *fiber.Ctx) error {
 	return SuccessResponse(c, fiber.StatusOK, "Stok berhasil dikembalikan dari Rak ke Gudang", batch)
 }
 
+// CreateInitialStockBatch handles POST /api/v1/inventory/batches/initial-stock
+func (h *InventoryHandler) CreateInitialStockBatch(c *fiber.Ctx) error {
+	branchID := getBranchID(c)
+	if branchID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Branch ID wajib ditentukan", nil)
+	}
+	userID := getUserID(c)
+
+	var req domain.CreateInitialBatchRequest
+	if err := c.BodyParser(&req); err != nil {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Format payload tidak valid", err)
+	}
+
+	batch, err := h.invUsecase.CreateInitialStockBatch(c.Context(), branchID, userID, &req)
+	if err != nil {
+		return ErrorResponse(c, fiber.StatusBadRequest, err.Error(), err)
+	}
+
+	return SuccessResponse(c, fiber.StatusCreated, "Saldo awal batch fisik berhasil dicatat", batch)
+}
+
 // -------------------------------------------------------------
 // Stock Summaries & Digital Stock Card
 // -------------------------------------------------------------

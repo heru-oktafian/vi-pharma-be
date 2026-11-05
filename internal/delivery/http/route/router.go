@@ -187,6 +187,7 @@ func SetupRoutes(
 	// 7.4 Internal Stock Transfer (Refill Rak & Return Gudang)
 	inv.Post("/refill-shelf", inventoryHandler.RefillShelf)
 	inv.Post("/return-warehouse", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.ReturnToWarehouse)
+	inv.Post("/batches/initial-stock", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.CreateInitialStockBatch)
 
 	// 7.5 Purchase Invoices (Faktur Pembelian PBF)
 	inv.Post("/invoices", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.ReceivePurchaseInvoice)

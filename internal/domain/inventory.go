@@ -16,6 +16,7 @@ const (
 	MutationReturnToWarehouse MutationType = "KEMBALI_GUDANG"  // Transfer internal: Rak -> Gudang
 	MutationReturnSupplier    MutationType = "RETUR_PBF"       // Keluar: Retur ke PBF
 	MutationAdjustment        MutationType = "OPNAME"          // Koreksi Opname Fisik
+	MutationInitialBalance    MutationType = "SALDO_AWAL"      // Saldo Awal Fisik Perdana
 )
 
 // StockLocation represents the physical zone in the pharmacy
@@ -210,6 +211,16 @@ type ReturnToWarehouseRequest struct {
 	Notes   string  `json:"notes"`
 }
 
+type CreateInitialBatchRequest struct {
+	MedicineID   string  `json:"medicine_id" validate:"required"`
+	BatchNumber  string  `json:"batch_number" validate:"required"`
+	ExpiredDate  string  `json:"expired_date" validate:"required"` // Format: YYYY-MM-DD
+	QtyWarehouse float64 `json:"qty_warehouse"`
+	QtyShelf     float64 `json:"qty_shelf"`
+	BuyPrice     float64 `json:"buy_price"`
+	Notes        string  `json:"notes"`
+}
+
 type CreateOpnameSessionRequest struct {
 	Location StockLocation      `json:"location" validate:"required"` // GUDANG atau RAK
 	RackName string             `json:"rack_name" validate:"required"`
@@ -299,6 +310,7 @@ type InventoryUsecase interface {
 
 	RefillShelf(ctx context.Context, branchID, userID string, req *RefillShelfRequest) (*MedicineBatch, error)
 	ReturnToWarehouse(ctx context.Context, branchID, userID string, req *ReturnToWarehouseRequest) (*MedicineBatch, error)
+	CreateInitialStockBatch(ctx context.Context, branchID, userID string, req *CreateInitialBatchRequest) (*MedicineBatch, error)
 
 	GetStockSummary(ctx context.Context, branchID, medicineID string) (*StockSummaryResponse, error)
 	ListStockSummaries(ctx context.Context, branchID string, search string) ([]StockSummaryResponse, error)
