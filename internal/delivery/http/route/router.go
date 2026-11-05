@@ -243,6 +243,7 @@ func SetupRoutes(
 	reports := v1.Group("/reports")
 	reports.Use(jwtAuth)
 	reports.Get("/staff-performance", reportHandler.GetStaffPerformance)
+	reports.Put("/branch-bonus-setting", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), reportHandler.UpdateBranchBonusSetting)
 	reports.Get("/sales-summary", reportHandler.GetSalesSummary)
 	reports.Get("/category-margins", reportHandler.GetCategoryMargins)
 }

@@ -20,15 +20,24 @@ func (h *ReportHandler) GetStaffPerformance(c *fiber.Ctx) error {
 	branchID := getBranchID(c)
 	startDate := c.Query("start_date", "")
 	endDate := c.Query("end_date", "")
+	
+	dailyMarginTarget, _ := strconv.ParseFloat(c.Query("daily_margin_target", "0"), 64)
+	if dailyMarginTarget == 0 {
+		dailyMarginTarget, _ = strconv.ParseFloat(c.Query("target_margin", "0"), 64)
+	}
+	dailyBonusReward, _ := strconv.ParseFloat(c.Query("daily_bonus_reward", "0"), 64)
+	if dailyBonusReward == 0 {
+		dailyBonusReward, _ = strconv.ParseFloat(c.Query("bonus_reward", "0"), 64)
+	}
 	bonusPool, _ := strconv.ParseFloat(c.Query("bonus_pool", "0"), 64)
-	targetMargin, _ := strconv.ParseFloat(c.Query("target_margin", "0"), 64)
 
 	filter := domain.ReportFilter{
-		BranchID:            branchID,
-		StartDate:           startDate,
-		EndDate:             endDate,
-		BonusPoolBudget:     bonusPool,
-		TargetMarginPercent: targetMargin,
+		BranchID:          branchID,
+		StartDate:         startDate,
+		EndDate:           endDate,
+		DailyMarginTarget: dailyMarginTarget,
+		DailyBonusReward:  dailyBonusReward,
+		BonusPoolBudget:   bonusPool,
 	}
 
 	report, err := h.reportUsecase.GetStaffPerformanceReport(c.Context(), filter)
@@ -37,6 +46,25 @@ func (h *ReportHandler) GetStaffPerformance(c *fiber.Ctx) error {
 	}
 
 	return SuccessResponse(c, fiber.StatusOK, "Laporan kinerja dan kontribusi margin petugas berhasil dimuat", report)
+}
+
+// UpdateBranchBonusSetting handles PUT /api/v1/reports/branch-bonus-setting
+func (h *ReportHandler) UpdateBranchBonusSetting(c *fiber.Ctx) error {
+	branchID := getBranchID(c)
+	var req domain.UpdateBranchBonusSettingRequest
+	if err := c.BodyParser(&req); err != nil {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Format data tidak valid", err)
+	}
+
+	if req.DailyMarginTarget < 0 || req.DailyBonusReward < 0 {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Target margin dan nominal bonus tidak boleh bernilai negatif", nil)
+	}
+
+	if err := h.reportUsecase.UpdateBranchBonusSetting(c.Context(), branchID, req); err != nil {
+		return ErrorResponse(c, fiber.StatusInternalServerError, "Gagal memperbarui konfigurasi bonus cabang", err)
+	}
+
+	return SuccessResponse(c, fiber.StatusOK, "Konfigurasi target margin dan bonus harian cabang berhasil diperbarui", req)
 }
 
 // GetSalesSummary handles GET /api/v1/reports/sales-summary

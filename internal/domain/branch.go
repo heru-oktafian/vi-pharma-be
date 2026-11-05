@@ -65,6 +65,8 @@ type Branch struct {
 	SubscriptionType SubscriptionType `gorm:"type:subscription_type;not null;default:'trial'" json:"subscription_type"`
 	Quota            int32            `gorm:"type:int4;default:0" json:"quota"`
 	RealAsset        RealAsset        `gorm:"type:real_asset;not null;default:'owned'" json:"real_asset"`
+	DailyMarginTarget float64         `gorm:"type:numeric(15,2);not null;default:250000" json:"daily_margin_target"`
+	DailyBonusReward  float64         `gorm:"type:numeric(15,2);not null;default:50000" json:"daily_bonus_reward"`
 	CreatedAt        time.Time        `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt        time.Time        `gorm:"autoUpdateTime" json:"updated_at"`
 }

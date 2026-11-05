@@ -4,20 +4,38 @@ import (
 	"context"
 )
 
+// DailyStaffAchievement represents performance metrics for a staff member on a specific day
+type DailyStaffAchievement struct {
+	Date           string  `json:"date"`
+	TotalRevenue   float64 `json:"total_revenue"`
+	TotalCOGS      float64 `json:"total_cogs"`
+	GrossMargin    float64 `json:"gross_margin"`
+	TargetMargin   float64 `json:"target_margin"`
+	TargetAchieved bool    `json:"target_achieved"`
+	BonusEarned    float64 `json:"bonus_earned"`
+	Transactions   int64   `json:"transactions"`
+}
+
 // StaffPerformanceItem represents individual contributor metrics
 type StaffPerformanceItem struct {
-	UserID                     string  `json:"user_id"`
-	UserName                   string  `json:"user_name"`
-	UserRole                   string  `json:"user_role"`
-	TotalTransactions          int64   `json:"total_transactions"`
-	TotalRevenue               float64 `json:"total_revenue"`
-	RevenueContributionPercent float64 `json:"revenue_contribution_percent"`
-	TotalCOGS                  float64 `json:"total_cogs"`                 // Total Modal Beli (HPP)
-	GrossMargin                float64 `json:"gross_margin"`               // Total Keuntungan Kotor (Rp)
-	MarginContributionPercent  float64 `json:"margin_contribution_percent"` // % terhadap Total Laba Cabang
-	MarkupPercent              float64 `json:"markup_percent"`             // % Keuntungan terhadap Modal (misal 200%)
-	TuslahAmount               float64 `json:"tuslah_amount"`              // Jasa Racik Apoteker
-	EstimatedBonus             float64 `json:"estimated_bonus"`            // Perhitungan estimasi bonus dari bonus pool
+	UserID                     string                  `json:"user_id"`
+	UserName                   string                  `json:"user_name"`
+	UserRole                   string                  `json:"user_role"`
+	TotalTransactions          int64                   `json:"total_transactions"`
+	TotalRevenue               float64                 `json:"total_revenue"`
+	RevenueContributionPercent float64                 `json:"revenue_contribution_percent"`
+	TotalCOGS                  float64                 `json:"total_cogs"`                  // Total Modal Beli (HPP)
+	GrossMargin                float64                 `json:"gross_margin"`                // Total Keuntungan Kotor (Rp)
+	MarginContributionPercent  float64                 `json:"margin_contribution_percent"` // % terhadap Total Laba Cabang
+	MarkupPercent              float64                 `json:"markup_percent"`              // % Keuntungan terhadap Modal
+	TuslahAmount               float64                 `json:"tuslah_amount"`               // Jasa Racik Apoteker
+	ActiveDaysCount            int                     `json:"active_days_count"`           // Jumlah hari aktif bertransaksi
+	DaysAchieved               int                     `json:"days_achieved"`               // Jumlah hari target margin harian tercapai
+	DailyTargetMargin          float64                 `json:"daily_target_margin"`         // Nilai target margin harian (Rp)
+	DailyBonusReward           float64                 `json:"daily_bonus_reward"`          // Bonus flat per hari jika target tercapai (Rp)
+	TotalBonus                 float64                 `json:"total_bonus"`                 // DaysAchieved * DailyBonusReward (Rp)
+	EstimatedBonus             float64                 `json:"estimated_bonus"`            // Backward compatibility alias
+	DailyBreakdown             []DailyStaffAchievement `json:"daily_breakdown"`             // Rincian performa per hari
 }
 
 // StaffPerformanceReportResponse represents the full report structure
@@ -30,9 +48,18 @@ type StaffPerformanceReportResponse struct {
 	TotalBranchCOGS     float64                `json:"total_branch_cogs"`
 	TotalBranchMargin   float64                `json:"total_branch_margin"`
 	AverageBranchMarkup float64                `json:"average_branch_markup"` // (Total Margin / Total COGS) * 100
-	BonusPoolBudget     float64                `json:"bonus_pool_budget"`
-	TargetMarginPercent float64                `json:"target_margin_percent"`
+	DailyMarginTarget   float64                `json:"daily_margin_target"`   // Target margin harian per karyawan (Rp)
+	DailyBonusReward    float64                `json:"daily_bonus_reward"`    // Bonus flat harian jika target tercapai (Rp)
+	TotalBonusPaid      float64                `json:"total_bonus_paid"`      // Akumulasi seluruh bonus yang tercapai di cabang
+	BonusPoolBudget     float64                `json:"bonus_pool_budget"`     // Backward compatibility
+	TargetMarginPercent float64                `json:"target_margin_percent"` // Backward compatibility
 	StaffContributions  []StaffPerformanceItem `json:"staff_contributions"`
+}
+
+// UpdateBranchBonusSettingRequest DTO to configure branch daily margin target and bonus
+type UpdateBranchBonusSettingRequest struct {
+	DailyMarginTarget float64 `json:"daily_margin_target"`
+	DailyBonusReward  float64 `json:"daily_bonus_reward"`
 }
 
 // PaymentMethodSummary represents revenue breakdown by payment method
@@ -82,6 +109,8 @@ type ReportFilter struct {
 	BranchID            string  `json:"branch_id"`
 	StartDate           string  `json:"start_date"`
 	EndDate             string  `json:"end_date"`
+	DailyMarginTarget   float64 `json:"daily_margin_target"`
+	DailyBonusReward    float64 `json:"daily_bonus_reward"`
 	BonusPoolBudget     float64 `json:"bonus_pool_budget"`
 	TargetMarginPercent float64 `json:"target_margin_percent"`
 }
@@ -90,10 +119,12 @@ type ReportRepository interface {
 	GetStaffPerformanceReport(ctx context.Context, filter ReportFilter) (*StaffPerformanceReportResponse, error)
 	GetSalesSummaryReport(ctx context.Context, filter ReportFilter) (*SalesSummaryReportResponse, error)
 	GetCategoryMarginsReport(ctx context.Context, filter ReportFilter) ([]CategoryMarginItem, error)
+	UpdateBranchBonusSetting(ctx context.Context, branchID string, dailyMarginTarget, dailyBonusReward float64) error
 }
 
 type ReportUsecase interface {
 	GetStaffPerformanceReport(ctx context.Context, filter ReportFilter) (*StaffPerformanceReportResponse, error)
 	GetSalesSummaryReport(ctx context.Context, filter ReportFilter) (*SalesSummaryReportResponse, error)
 	GetCategoryMarginsReport(ctx context.Context, filter ReportFilter) ([]CategoryMarginItem, error)
+	UpdateBranchBonusSetting(ctx context.Context, branchID string, req UpdateBranchBonusSettingRequest) error
 }

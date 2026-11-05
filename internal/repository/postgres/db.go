@@ -111,6 +111,10 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to auto-migrate tables: %w", err)
 	}
 
+	// Step 2.5: Ensure daily bonus target columns exist in branches table
+	_ = db.Exec("ALTER TABLE branches ADD COLUMN IF NOT EXISTS daily_margin_target numeric(15,2) DEFAULT 250000").Error
+	_ = db.Exec("ALTER TABLE branches ADD COLUMN IF NOT EXISTS daily_bonus_reward numeric(15,2) DEFAULT 50000").Error
+
 	// Step 3: Seed initial data (Admin & Default Branches)
 	seedInitialData(db)
 

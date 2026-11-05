@@ -27,3 +27,10 @@ func (u *reportUsecase) GetSalesSummaryReport(ctx context.Context, filter domain
 func (u *reportUsecase) GetCategoryMarginsReport(ctx context.Context, filter domain.ReportFilter) ([]domain.CategoryMarginItem, error) {
 	return u.reportRepo.GetCategoryMarginsReport(ctx, filter)
 }
+
+func (u *reportUsecase) UpdateBranchBonusSetting(ctx context.Context, branchID string, req domain.UpdateBranchBonusSettingRequest) error {
+	if branchID == "" {
+		branchID = "CBG000000000001"
+	}
+	return u.reportRepo.UpdateBranchBonusSetting(ctx, branchID, req.DailyMarginTarget, req.DailyBonusReward)
+}

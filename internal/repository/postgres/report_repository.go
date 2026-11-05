@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"math"
+	"sort"
 	"time"
 
 	"gorm.io/gorm"
@@ -25,7 +26,6 @@ func (r *reportRepository) GetStaffPerformanceReport(ctx context.Context, filter
 
 	startDate := filter.StartDate
 	if startDate == "" {
-		// Default to first day of current month
 		now := time.Now()
 		startDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()).Format("2006-01-02")
 	}
@@ -38,7 +38,7 @@ func (r *reportRepository) GetStaffPerformanceReport(ctx context.Context, filter
 	startDateTime := startDate + " 00:00:00"
 	endDateTime := endDate + " 23:59:59"
 
-	// 1. Get Branch Info
+	// 1. Get Branch Info & Threshold Configurations
 	var branch domain.Branch
 	_ = r.db.WithContext(ctx).Where("id = ?", branchID).First(&branch).Error
 	branchName := branch.BranchName
@@ -46,22 +46,38 @@ func (r *reportRepository) GetStaffPerformanceReport(ctx context.Context, filter
 		branchName = "Apotek Vi-Pharma Pusat"
 	}
 
-	// 2. Query Cashier sales with COGS from batches
-	type CashierRawStat struct {
+	dailyMarginTarget := branch.DailyMarginTarget
+	if filter.DailyMarginTarget > 0 {
+		dailyMarginTarget = filter.DailyMarginTarget
+	} else if dailyMarginTarget <= 0 {
+		dailyMarginTarget = 250000 // Default: Rp 250.000 margin per hari
+	}
+
+	dailyBonusReward := branch.DailyBonusReward
+	if filter.DailyBonusReward > 0 {
+		dailyBonusReward = filter.DailyBonusReward
+	} else if dailyBonusReward <= 0 {
+		dailyBonusReward = 50000 // Default: Rp 50.000 flat bonus per hari tercapai
+	}
+
+	// 2. Query Cashier sales segmented by Day
+	type CashierDailyStat struct {
 		UserID            string  `gorm:"column:user_id"`
 		UserName          string  `gorm:"column:user_name"`
 		UserRole          string  `gorm:"column:user_role"`
+		TxDate            string  `gorm:"column:tx_date"`
 		TotalTransactions int64   `gorm:"column:total_transactions"`
 		TotalRevenue      float64 `gorm:"column:total_revenue"`
 		TotalCOGS         float64 `gorm:"column:total_cogs"`
 	}
 
-	var cashierStats []CashierRawStat
+	var cashierStats []CashierDailyStat
 	err := r.db.WithContext(ctx).Raw(`
 		SELECT 
-			s.cashier_id as user_id,
+			COALESCE(s.cashier_id, 'KASIR_CABANG') as user_id,
 			COALESCE(u.name, 'Petugas Kasir') as user_name,
 			COALESCE(u.user_role::text, 'cashier') as user_role,
+			TO_CHAR(s.created_at, 'YYYY-MM-DD') as tx_date,
 			COUNT(DISTINCT s.id) as total_transactions,
 			COALESCE(SUM(si.total), 0) as total_revenue,
 			COALESCE(SUM(si.qty_base * COALESCE(b.buy_price, 0)), 0) as total_cogs
@@ -72,28 +88,31 @@ func (r *reportRepository) GetStaffPerformanceReport(ctx context.Context, filter
 		WHERE s.branch_id = ? 
 		  AND s.payment_status = 'PAID'
 		  AND s.created_at BETWEEN ? AND ?
-		GROUP BY s.cashier_id, u.name, u.user_role
+		GROUP BY s.cashier_id, u.name, u.user_role, TO_CHAR(s.created_at, 'YYYY-MM-DD')
+		ORDER BY tx_date ASC
 	`, branchID, startDateTime, endDateTime).Scan(&cashierStats).Error
 	if err != nil {
 		return nil, err
 	}
 
-	// 3. Query Pharmacist compounded prescriptions
-	type PharmacistRawStat struct {
+	// 3. Query Pharmacist compounded prescriptions segmented by Day
+	type PharmacistDailyStat struct {
 		UserID       string  `gorm:"column:user_id"`
 		UserName     string  `gorm:"column:user_name"`
 		UserRole     string  `gorm:"column:user_role"`
+		TxDate       string  `gorm:"column:tx_date"`
 		RxCount      int64   `gorm:"column:rx_count"`
 		RxRevenue    float64 `gorm:"column:rx_revenue"`
 		TotalTuslah  float64 `gorm:"column:total_tuslah"`
 	}
 
-	var pharmacistStats []PharmacistRawStat
+	var pharmacistStats []PharmacistDailyStat
 	_ = r.db.WithContext(ctx).Raw(`
 		SELECT 
-			p.pharmacist_id as user_id,
+			COALESCE(p.pharmacist_id, 'APOTEKER_CABANG') as user_id,
 			COALESCE(u.name, 'Apoteker Pelayan') as user_name,
 			COALESCE(u.user_role::text, 'pharmacist') as user_role,
+			TO_CHAR(p.created_at, 'YYYY-MM-DD') as tx_date,
 			COUNT(DISTINCT p.id) as rx_count,
 			COALESCE(SUM(p.grand_total), 0) as rx_revenue,
 			COALESCE(SUM(p.total_tuslah), 0) as total_tuslah
@@ -103,27 +122,48 @@ func (r *reportRepository) GetStaffPerformanceReport(ctx context.Context, filter
 		  AND p.status IN ('SIAP', 'SELESAI')
 		  AND p.created_at BETWEEN ? AND ?
 		  AND p.pharmacist_id IS NOT NULL
-		GROUP BY p.pharmacist_id, u.name, u.user_role
+		GROUP BY p.pharmacist_id, u.name, u.user_role, TO_CHAR(p.created_at, 'YYYY-MM-DD')
+		ORDER BY tx_date ASC
 	`, branchID, startDateTime, endDateTime).Scan(&pharmacistStats)
 
-	// 4. Merge stats into unified staff performance map
+	// 4. Merge stats into unified map per user and per day
 	userMap := make(map[string]*domain.StaffPerformanceItem)
+	userDailyMap := make(map[string]map[string]*domain.DailyStaffAchievement)
 
 	for _, cs := range cashierStats {
 		uID := cs.UserID
 		if uID == "" {
 			uID = "USR000000000001"
 		}
-		item := &domain.StaffPerformanceItem{
-			UserID:            uID,
-			UserName:          cs.UserName,
-			UserRole:          cs.UserRole,
-			TotalTransactions: cs.TotalTransactions,
-			TotalRevenue:      cs.TotalRevenue,
-			TotalCOGS:         cs.TotalCOGS,
-			GrossMargin:       cs.TotalRevenue - cs.TotalCOGS,
+		if _, exists := userMap[uID]; !exists {
+			userMap[uID] = &domain.StaffPerformanceItem{
+				UserID:   uID,
+				UserName: cs.UserName,
+				UserRole: cs.UserRole,
+			}
 		}
-		userMap[uID] = item
+		item := userMap[uID]
+		item.TotalTransactions += cs.TotalTransactions
+		item.TotalRevenue += cs.TotalRevenue
+		item.TotalCOGS += cs.TotalCOGS
+		item.GrossMargin += (cs.TotalRevenue - cs.TotalCOGS)
+
+		if _, exists := userDailyMap[uID]; !exists {
+			userDailyMap[uID] = make(map[string]*domain.DailyStaffAchievement)
+		}
+		dMap := userDailyMap[uID]
+		dateKey := cs.TxDate
+		if _, exists := dMap[dateKey]; !exists {
+			dMap[dateKey] = &domain.DailyStaffAchievement{
+				Date:         dateKey,
+				TargetMargin: dailyMarginTarget,
+			}
+		}
+		dItem := dMap[dateKey]
+		dItem.TotalRevenue += cs.TotalRevenue
+		dItem.TotalCOGS += cs.TotalCOGS
+		dItem.GrossMargin += (cs.TotalRevenue - cs.TotalCOGS)
+		dItem.Transactions += cs.TotalTransactions
 	}
 
 	for _, ps := range pharmacistStats {
@@ -131,32 +171,79 @@ func (r *reportRepository) GetStaffPerformanceReport(ctx context.Context, filter
 		if uID == "" {
 			continue
 		}
-		if existing, ok := userMap[uID]; ok {
-			existing.TuslahAmount += ps.TotalTuslah
-			existing.TotalTransactions += ps.RxCount
-		} else {
+		if _, exists := userMap[uID]; !exists {
 			userMap[uID] = &domain.StaffPerformanceItem{
-				UserID:            uID,
-				UserName:          ps.UserName,
-				UserRole:          ps.UserRole,
-				TotalTransactions: ps.RxCount,
-				TotalRevenue:      ps.RxRevenue,
-				TotalCOGS:         0,
-				GrossMargin:       ps.RxRevenue,
-				TuslahAmount:      ps.TotalTuslah,
+				UserID:   uID,
+				UserName: ps.UserName,
+				UserRole: ps.UserRole,
 			}
 		}
+		item := userMap[uID]
+		item.TotalTransactions += ps.RxCount
+		item.TotalRevenue += ps.RxRevenue
+		item.GrossMargin += ps.RxRevenue
+		item.TuslahAmount += ps.TotalTuslah
+
+		if _, exists := userDailyMap[uID]; !exists {
+			userDailyMap[uID] = make(map[string]*domain.DailyStaffAchievement)
+		}
+		dMap := userDailyMap[uID]
+		dateKey := ps.TxDate
+		if _, exists := dMap[dateKey]; !exists {
+			dMap[dateKey] = &domain.DailyStaffAchievement{
+				Date:         dateKey,
+				TargetMargin: dailyMarginTarget,
+			}
+		}
+		dItem := dMap[dateKey]
+		dItem.TotalRevenue += ps.RxRevenue
+		dItem.GrossMargin += ps.RxRevenue
+		dItem.Transactions += ps.RxCount
+	}
+
+	// 5. Evaluate daily threshold bonus per user
+	for uID, item := range userMap {
+		dMap := userDailyMap[uID]
+		item.ActiveDaysCount = len(dMap)
+		item.DailyTargetMargin = dailyMarginTarget
+		item.DailyBonusReward = dailyBonusReward
+
+		var daysAchieved int
+		var dailyList []domain.DailyStaffAchievement
+
+		for _, dItem := range dMap {
+			if dItem.GrossMargin >= dailyMarginTarget {
+				dItem.TargetAchieved = true
+				dItem.BonusEarned = dailyBonusReward // Flat bonus: tidak bertambah meski melebihi target
+				daysAchieved++
+			} else {
+				dItem.TargetAchieved = false
+				dItem.BonusEarned = 0
+			}
+			dailyList = append(dailyList, *dItem)
+		}
+
+		sort.Slice(dailyList, func(i, j int) bool {
+			return dailyList[i].Date > dailyList[j].Date
+		})
+
+		item.DaysAchieved = daysAchieved
+		item.TotalBonus = float64(daysAchieved) * dailyBonusReward
+		item.EstimatedBonus = item.TotalBonus
+		item.DailyBreakdown = dailyList
 	}
 
 	// Calculate branch totals
 	var totalBranchRevenue float64
 	var totalBranchCOGS float64
 	var totalBranchMargin float64
+	var totalBonusPaid float64
 
 	for _, it := range userMap {
 		totalBranchRevenue += it.TotalRevenue
 		totalBranchCOGS += it.TotalCOGS
 		totalBranchMargin += it.GrossMargin
+		totalBonusPaid += it.TotalBonus
 	}
 
 	var staffList []domain.StaffPerformanceItem
@@ -178,13 +265,13 @@ func (r *reportRepository) GetStaffPerformanceReport(ctx context.Context, filter
 			it.MarkupPercent = 100
 		}
 
-		// Calculate Estimated Bonus from Bonus Pool
-		if filter.BonusPoolBudget > 0 && totalBranchMargin > 0 {
-			it.EstimatedBonus = math.Round((it.MarginContributionPercent / 100) * filter.BonusPoolBudget)
-		}
-
 		staffList = append(staffList, *it)
 	}
+
+	// Sort staffList descending by GrossMargin
+	sort.Slice(staffList, func(i, j int) bool {
+		return staffList[i].GrossMargin > staffList[j].GrossMargin
+	})
 
 	var averageBranchMarkup float64
 	if totalBranchCOGS > 0 {
@@ -200,10 +287,22 @@ func (r *reportRepository) GetStaffPerformanceReport(ctx context.Context, filter
 		TotalBranchCOGS:     totalBranchCOGS,
 		TotalBranchMargin:   totalBranchMargin,
 		AverageBranchMarkup: averageBranchMarkup,
+		DailyMarginTarget:   dailyMarginTarget,
+		DailyBonusReward:    dailyBonusReward,
+		TotalBonusPaid:      totalBonusPaid,
 		BonusPoolBudget:     filter.BonusPoolBudget,
 		TargetMarginPercent: filter.TargetMarginPercent,
 		StaffContributions:  staffList,
 	}, nil
+}
+
+func (r *reportRepository) UpdateBranchBonusSetting(ctx context.Context, branchID string, dailyMarginTarget, dailyBonusReward float64) error {
+	return r.db.WithContext(ctx).Model(&domain.Branch{}).
+		Where("id = ?", branchID).
+		Updates(map[string]interface{}{
+			"daily_margin_target": dailyMarginTarget,
+			"daily_bonus_reward":  dailyBonusReward,
+		}).Error
 }
 
 func (r *reportRepository) GetSalesSummaryReport(ctx context.Context, filter domain.ReportFilter) (*domain.SalesSummaryReportResponse, error) {
