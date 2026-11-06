@@ -192,10 +192,14 @@ func SetupRoutes(
 	inv.Post("/return-warehouse", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.ReturnToWarehouse)
 	inv.Post("/batches/initial-stock", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.CreateInitialStockBatch)
 
-	// 7.5 Purchase Invoices (Faktur Pembelian PBF)
-	inv.Post("/invoices", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.ReceivePurchaseInvoice)
+	// 7.5 Purchase Invoices (Faktur Pembelian PBF) & Accounts Payable
+	inv.Post("/invoices", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist, domain.RoleInventory), inventoryHandler.ReceivePurchaseInvoice)
 	inv.Get("/invoices", inventoryHandler.ListPurchaseInvoices)
 	inv.Get("/invoices/:id", inventoryHandler.GetPurchaseInvoiceDetail)
+	inv.Get("/accounts-payable/summary", inventoryHandler.GetAccountsPayableSummary)
+	inv.Get("/accounts-payable/invoices", inventoryHandler.ListAccountsPayableInvoices)
+	inv.Post("/invoices/:id/payments", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.RecordInvoicePayment)
+	inv.Get("/invoices/:id/payments", inventoryHandler.GetInvoicePayments)
 
 	// 7.6 Rolling Cycle Count (Stok Opname Bergulir)
 	inv.Post("/opnames", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.CreateOpnameSession)

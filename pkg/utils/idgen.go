@@ -151,3 +151,8 @@ func GeneratePurchaseReturnItemID() string {
 	return generateIDWithPrefix("PRI")
 }
 
+// GenerateInvoicePaymentID generates a 15-character unique identifier for purchase invoice payments (prefix "PIP")
+func GenerateInvoicePaymentID() string {
+	return generateIDWithPrefix("PIP")
+}
+

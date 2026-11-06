@@ -42,5 +42,8 @@ var (
 	ErrPurchaseReturnNotFound          = errors.New("data retur pembelian PBF tidak ditemukan")
 	ErrPurchaseReturnAlreadyProcessed  = errors.New("retur pembelian PBF sudah diselesaikan atau dibatalkan dan tidak dapat diubah")
 	ErrInsufficientReturnStock         = errors.New("jumlah stok batch pada lokasi yang dipilih tidak mencukupi untuk diretur")
+	ErrInvoiceAlreadyPaid              = errors.New("faktur pembelian sudah lunas")
+	ErrPaymentExceedsBalance           = errors.New("nominal pembayaran melebihi sisa hutang faktur")
+	ErrInvalidPaymentValue             = errors.New("nominal pembayaran harus lebih besar dari 0")
 	ErrInternalServer                  = errors.New("internal server error")
 )

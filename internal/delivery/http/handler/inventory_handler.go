@@ -126,6 +126,127 @@ func (h *InventoryHandler) GetPurchaseInvoiceDetail(c *fiber.Ctx) error {
 }
 
 // -------------------------------------------------------------
+// Accounts Payable & Payments (Hutang Pembelian & Jatuh Tempo)
+// -------------------------------------------------------------
+
+// GetAccountsPayableSummary handles GET /api/v1/inventory/accounts-payable/summary
+func (h *InventoryHandler) GetAccountsPayableSummary(c *fiber.Ctx) error {
+	branchID := getBranchID(c)
+	if branchID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Branch ID wajib ditentukan", nil)
+	}
+
+	summary, err := h.invUsecase.GetAccountsPayableSummary(c.Context(), branchID)
+	if err != nil {
+		return ErrorResponse(c, fiber.StatusInternalServerError, "Gagal mengambil ringkasan hutang pembelian", err)
+	}
+
+	return SuccessResponse(c, fiber.StatusOK, "Ringkasan hutang pembelian PBF berhasil diambil", summary)
+}
+
+// ListAccountsPayableInvoices handles GET /api/v1/inventory/accounts-payable/invoices
+func (h *InventoryHandler) ListAccountsPayableInvoices(c *fiber.Ctx) error {
+	branchID := getBranchID(c)
+	if branchID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Branch ID wajib ditentukan", nil)
+	}
+
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "20"))
+	search := c.Query("search", "")
+	supplierID := c.Query("supplier_id", "")
+	status := domain.PaymentStatus(c.Query("status", ""))
+	isOverdue := c.Query("is_overdue") == "true"
+	dueSoon := c.Query("due_soon") == "true"
+	startDate := c.Query("start_date", "")
+	endDate := c.Query("end_date", "")
+	sortBy := c.Query("sort_by", "due_date_asc")
+
+	filter := domain.AccountsPayableFilter{
+		Search:     search,
+		SupplierID: supplierID,
+		Status:     status,
+		IsOverdue:  isOverdue,
+		DueSoon:    dueSoon,
+		StartDate:  startDate,
+		EndDate:    endDate,
+		SortBy:     sortBy,
+		Page:       page,
+		Limit:      limit,
+	}
+
+	result, err := h.invUsecase.ListAccountsPayableInvoices(c.Context(), branchID, filter)
+	if err != nil {
+		return ErrorResponse(c, fiber.StatusInternalServerError, "Gagal mengambil daftar hutang faktur PBF", err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"success": true,
+		"message": "Daftar hutang faktur PBF berhasil diambil",
+		"data":    result.Data,
+		"meta": fiber.Map{
+			"current_page": result.Page,
+			"page_size":    result.Limit,
+			"total_items":  result.TotalItems,
+			"total_pages":  result.TotalPages,
+		},
+	})
+}
+
+// RecordInvoicePayment handles POST /api/v1/inventory/invoices/:id/payments
+func (h *InventoryHandler) RecordInvoicePayment(c *fiber.Ctx) error {
+	branchID := getBranchID(c)
+	if branchID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Branch ID wajib ditentukan", nil)
+	}
+	userID := getUserID(c)
+	invoiceID := c.Params("id")
+	if invoiceID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "ID faktur wajib diisi", nil)
+	}
+
+	var req domain.CreateInvoicePaymentRequest
+	if err := c.BodyParser(&req); err != nil {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Format payload tidak valid", err)
+	}
+
+	if req.Amount <= 0 {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Nominal pembayaran harus lebih besar dari 0", nil)
+	}
+
+	payment, err := h.invUsecase.RecordInvoicePayment(c.Context(), branchID, userID, invoiceID, &req)
+	if err != nil {
+		if errors.Is(err, domain.ErrInvoiceNotFound) {
+			return ErrorResponse(c, fiber.StatusNotFound, "Faktur pembelian tidak ditemukan", nil)
+		}
+		if errors.Is(err, domain.ErrInvoiceAlreadyPaid) {
+			return ErrorResponse(c, fiber.StatusBadRequest, "Faktur pembelian ini sudah berstatus lunas", nil)
+		}
+		if errors.Is(err, domain.ErrPaymentExceedsBalance) {
+			return ErrorResponse(c, fiber.StatusBadRequest, "Nominal pembayaran melebihi sisa hutang faktur", nil)
+		}
+		return ErrorResponse(c, fiber.StatusInternalServerError, "Gagal mencatat pelunasan hutang faktur", err)
+	}
+
+	return SuccessResponse(c, fiber.StatusCreated, "Pembayaran hutang faktur berhasil dicatat", payment)
+}
+
+// GetInvoicePayments handles GET /api/v1/inventory/invoices/:id/payments
+func (h *InventoryHandler) GetInvoicePayments(c *fiber.Ctx) error {
+	invoiceID := c.Params("id")
+	if invoiceID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "ID faktur wajib diisi", nil)
+	}
+
+	payments, err := h.invUsecase.GetInvoicePayments(c.Context(), invoiceID)
+	if err != nil {
+		return ErrorResponse(c, fiber.StatusInternalServerError, "Gagal mengambil riwayat pembayaran faktur", err)
+	}
+
+	return SuccessResponse(c, fiber.StatusOK, "Riwayat pembayaran faktur berhasil diambil", payments)
+}
+
+// -------------------------------------------------------------
 // Stock Transfers (Gudang <-> Rak)
 // -------------------------------------------------------------
 

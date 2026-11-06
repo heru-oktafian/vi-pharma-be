@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"time"
 
@@ -155,14 +156,16 @@ func (u *inventoryUsecase) ReceivePurchaseInvoice(
 		})
 	}
 
-	paymentStatus := domain.PaymentStatusUnpaid
-	if req.PaymentType == domain.PaymentCash {
-		paymentStatus = domain.PaymentStatusPaid
-	}
-
 	totalAmount := subtotal - req.DiscountAmount + req.TaxAmount
 	if totalAmount < 0 {
 		totalAmount = 0
+	}
+
+	paidAmount := float64(0)
+	paymentStatus := domain.PaymentStatusUnpaid
+	if req.PaymentType == domain.PaymentCash {
+		paymentStatus = domain.PaymentStatusPaid
+		paidAmount = totalAmount
 	}
 
 	invoice := &domain.PurchaseInvoice{
@@ -178,6 +181,7 @@ func (u *inventoryUsecase) ReceivePurchaseInvoice(
 		DiscountAmount: req.DiscountAmount,
 		TaxAmount:      req.TaxAmount,
 		TotalAmount:    totalAmount,
+		PaidAmount:     paidAmount,
 		Notes:          req.Notes,
 		ReceivedByID:   userID,
 		Items:          items,
@@ -185,6 +189,21 @@ func (u *inventoryUsecase) ReceivePurchaseInvoice(
 
 	if err := u.invRepo.CreatePurchaseInvoice(ctx, invoice); err != nil {
 		return nil, fmt.Errorf("failed to save invoice: %w", err)
+	}
+
+	// If paid in cash immediately, record initial payment record
+	if paidAmount > 0 {
+		_ = u.invRepo.CreateInvoicePayment(ctx, &domain.PurchaseInvoicePayment{
+			ID:                utils.GenerateInvoicePaymentID(),
+			BranchID:          branchID,
+			PurchaseInvoiceID: invoiceID,
+			PaymentDate:       invoiceDate,
+			PaymentMethod:     "CASH",
+			Amount:            paidAmount,
+			ReferenceNumber:   "TUNAI_SAAT_TERIMA",
+			Notes:             "Pembayaran tunai saat penerimaan barang faktur",
+			CreatedByID:       userID,
+		})
 	}
 
 	return u.invRepo.GetPurchaseInvoiceByID(ctx, invoiceID)
@@ -202,6 +221,100 @@ func (u *inventoryUsecase) ListPurchaseInvoices(ctx context.Context, branchID st
 
 func (u *inventoryUsecase) GetPurchaseInvoiceDetail(ctx context.Context, invoiceID string) (*domain.PurchaseInvoice, error) {
 	return u.invRepo.GetPurchaseInvoiceByID(ctx, invoiceID)
+}
+
+// -------------------------------------------------------------
+// Accounts Payable & Payments Usecase
+// -------------------------------------------------------------
+
+func (u *inventoryUsecase) GetAccountsPayableSummary(ctx context.Context, branchID string) (*domain.AccountsPayableSummary, error) {
+	return u.invRepo.GetAccountsPayableSummary(ctx, branchID)
+}
+
+func (u *inventoryUsecase) ListAccountsPayableInvoices(ctx context.Context, branchID string, filter domain.AccountsPayableFilter) (*domain.PaginatedAccountsPayable, error) {
+	data, total, err := u.invRepo.ListAccountsPayableInvoices(ctx, branchID, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	page := filter.Page
+	if page < 1 {
+		page = 1
+	}
+	limit := filter.Limit
+	if limit < 1 {
+		limit = 20
+	}
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+
+	return &domain.PaginatedAccountsPayable{
+		Data:       data,
+		TotalItems: total,
+		TotalPages: totalPages,
+		Page:       page,
+		Limit:      limit,
+	}, nil
+}
+
+func (u *inventoryUsecase) RecordInvoicePayment(
+	ctx context.Context,
+	branchID, userID, invoiceID string,
+	req *domain.CreateInvoicePaymentRequest,
+) (*domain.PurchaseInvoicePayment, error) {
+	if req.Amount <= 0 {
+		return nil, domain.ErrInvalidPaymentValue
+	}
+
+	inv, err := u.invRepo.GetPurchaseInvoiceByID(ctx, invoiceID)
+	if err != nil {
+		return nil, err
+	}
+	if inv.BranchID != branchID {
+		return nil, domain.ErrUnauthorizedBranch
+	}
+
+	if inv.PaymentStatus == domain.PaymentStatusPaid {
+		return nil, domain.ErrInvoiceAlreadyPaid
+	}
+
+	remainingBalance := inv.TotalAmount - inv.PaidAmount
+	if req.Amount > (remainingBalance + 0.01) { // Tolerate floating point micro-differences
+		return nil, domain.ErrPaymentExceedsBalance
+	}
+
+	payDate := time.Now()
+	if req.PaymentDate != "" {
+		if t, err := time.Parse("2006-01-02", req.PaymentDate); err == nil {
+			payDate = t
+		}
+	}
+
+	method := req.PaymentMethod
+	if method == "" {
+		method = "BANK_TRANSFER"
+	}
+
+	payment := &domain.PurchaseInvoicePayment{
+		ID:                utils.GenerateInvoicePaymentID(),
+		BranchID:          branchID,
+		PurchaseInvoiceID: invoiceID,
+		PaymentDate:       payDate,
+		PaymentMethod:     method,
+		Amount:            req.Amount,
+		ReferenceNumber:   req.ReferenceNumber,
+		Notes:             req.Notes,
+		CreatedByID:       userID,
+	}
+
+	if err := u.invRepo.CreateInvoicePayment(ctx, payment); err != nil {
+		return nil, fmt.Errorf("failed to record invoice payment: %w", err)
+	}
+
+	return payment, nil
+}
+
+func (u *inventoryUsecase) GetInvoicePayments(ctx context.Context, invoiceID string) ([]domain.PurchaseInvoicePayment, error) {
+	return u.invRepo.GetInvoicePaymentsByInvoiceID(ctx, invoiceID)
 }
 
 // -------------------------------------------------------------

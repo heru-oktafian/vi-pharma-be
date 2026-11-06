@@ -218,6 +218,10 @@ func (r *inventoryRepository) GetPurchaseInvoiceByID(ctx context.Context, invoic
 		Preload("Items.Medicine").
 		Preload("Items.Medicine.BaseUnit").
 		Preload("Items.Unit").
+		Preload("Payments", func(db *gorm.DB) *gorm.DB {
+			return db.Order("payment_date DESC, created_at DESC")
+		}).
+		Preload("Payments.CreatedBy").
 		Where("id = ?", invoiceID).
 		First(&invoice).Error
 
@@ -250,6 +254,207 @@ func (r *inventoryRepository) ListPurchaseInvoices(ctx context.Context, branchID
 		Find(&invoices).Error
 
 	return invoices, total, err
+}
+
+// -------------------------------------------------------------
+// Accounts Payable & Invoice Payments
+// -------------------------------------------------------------
+
+func (r *inventoryRepository) GetAccountsPayableSummary(ctx context.Context, branchID string) (*domain.AccountsPayableSummary, error) {
+	now := time.Now().Truncate(24 * time.Hour)
+	next7Days := now.AddDate(0, 0, 7)
+	firstOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
+
+	summary := &domain.AccountsPayableSummary{}
+
+	// 1. Total Outstanding Debt (Total Tagihan - Total Terbayar pada faktur yang belum lunas)
+	type DebtResult struct {
+		TotalDebt float64
+	}
+	var debtRes DebtResult
+	r.db.WithContext(ctx).Model(&domain.PurchaseInvoice{}).
+		Select("COALESCE(SUM(total_amount - paid_amount), 0) as total_debt").
+		Where("branch_id = ? AND payment_status != 'PAID' AND payment_status != 'CANCELLED'", branchID).
+		Scan(&debtRes)
+	summary.TotalOutstandingDebt = debtRes.TotalDebt
+
+	// 2. Total Invoices Count & Unpaid Invoices Count
+	r.db.WithContext(ctx).Model(&domain.PurchaseInvoice{}).
+		Where("branch_id = ? AND payment_status != 'CANCELLED'", branchID).
+		Count(&summary.TotalInvoices)
+
+	r.db.WithContext(ctx).Model(&domain.PurchaseInvoice{}).
+		Where("branch_id = ? AND payment_status != 'PAID' AND payment_status != 'CANCELLED'", branchID).
+		Count(&summary.UnpaidInvoicesCount)
+
+	// 3. Overdue Debt (Hutang macet / lewat jatuh tempo)
+	var overdueRes DebtResult
+	r.db.WithContext(ctx).Model(&domain.PurchaseInvoice{}).
+		Select("COALESCE(SUM(total_amount - paid_amount), 0) as total_debt").
+		Where("branch_id = ? AND payment_status != 'PAID' AND payment_status != 'CANCELLED' AND due_date < ?", branchID, now).
+		Scan(&overdueRes)
+	summary.OverdueDebt = overdueRes.TotalDebt
+
+	r.db.WithContext(ctx).Model(&domain.PurchaseInvoice{}).
+		Where("branch_id = ? AND payment_status != 'PAID' AND payment_status != 'CANCELLED' AND due_date < ?", branchID, now).
+		Count(&summary.OverdueCount)
+
+	// 4. Due Soon (Jatuh tempo 7 hari ke depan)
+	var dueSoonRes DebtResult
+	r.db.WithContext(ctx).Model(&domain.PurchaseInvoice{}).
+		Select("COALESCE(SUM(total_amount - paid_amount), 0) as total_debt").
+		Where("branch_id = ? AND payment_status != 'PAID' AND payment_status != 'CANCELLED' AND due_date >= ? AND due_date <= ?", branchID, now, next7Days).
+		Scan(&dueSoonRes)
+	summary.DueSoonDebt = dueSoonRes.TotalDebt
+
+	r.db.WithContext(ctx).Model(&domain.PurchaseInvoice{}).
+		Where("branch_id = ? AND payment_status != 'PAID' AND payment_status != 'CANCELLED' AND due_date >= ? AND due_date <= ?", branchID, now, next7Days).
+		Count(&summary.DueSoonCount)
+
+	// 5. Total Paid This Month (Pelunasan hutang bulan berjalan)
+	var paidThisMonthRes struct {
+		TotalPaid float64
+	}
+	r.db.WithContext(ctx).Model(&domain.PurchaseInvoicePayment{}).
+		Select("COALESCE(SUM(amount), 0) as total_paid").
+		Where("branch_id = ? AND payment_date >= ?", branchID, firstOfMonth).
+		Scan(&paidThisMonthRes)
+	summary.TotalPaidThisMonth = paidThisMonthRes.TotalPaid
+
+	return summary, nil
+}
+
+func (r *inventoryRepository) ListAccountsPayableInvoices(ctx context.Context, branchID string, filter domain.AccountsPayableFilter) ([]domain.PurchaseInvoice, int64, error) {
+	var invoices []domain.PurchaseInvoice
+	var total int64
+
+	now := time.Now().Truncate(24 * time.Hour)
+	next7Days := now.AddDate(0, 0, 7)
+
+	query := r.db.WithContext(ctx).Model(&domain.PurchaseInvoice{}).
+		Where("branch_id = ? AND payment_status != 'CANCELLED'", branchID)
+
+	if filter.Search != "" {
+		s := "%" + filter.Search + "%"
+		query = query.Where("(invoice_number ILIKE ? OR supplier_id IN (SELECT id FROM suppliers WHERE name ILIKE ?))", s, s)
+	}
+
+	if filter.SupplierID != "" {
+		query = query.Where("supplier_id = ?", filter.SupplierID)
+	}
+
+	if filter.Status != "" {
+		query = query.Where("payment_status = ?", filter.Status)
+	}
+
+	if filter.IsOverdue {
+		query = query.Where("payment_status != 'PAID' AND due_date < ?", now)
+	} else if filter.DueSoon {
+		query = query.Where("payment_status != 'PAID' AND due_date >= ? AND due_date <= ?", now, next7Days)
+	}
+
+	if filter.StartDate != "" && filter.EndDate != "" {
+		query = query.Where("invoice_date >= ? AND invoice_date <= ?", filter.StartDate, filter.EndDate)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Sorting
+	switch filter.SortBy {
+	case "due_date_desc":
+		query = query.Order("due_date DESC NULLS LAST")
+	case "debt_desc":
+		query = query.Order("(total_amount - paid_amount) DESC")
+	case "date_desc":
+		query = query.Order("invoice_date DESC")
+	default:
+		// Default: due_date_asc (faktur yang paling mendesak jatuh tempo muncul paling atas)
+		query = query.Order("due_date ASC NULLS LAST, invoice_date ASC")
+	}
+
+	page := filter.Page
+	if page < 1 {
+		page = 1
+	}
+	limit := filter.Limit
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+
+	err := query.
+		Preload("Supplier").
+		Preload("ReceivedBy").
+		Preload("Payments", func(db *gorm.DB) *gorm.DB {
+			return db.Order("payment_date DESC")
+		}).
+		Offset(offset).
+		Limit(limit).
+		Find(&invoices).Error
+
+	return invoices, total, err
+}
+
+func (r *inventoryRepository) CreateInvoicePayment(ctx context.Context, payment *domain.PurchaseInvoicePayment) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(payment).Error; err != nil {
+			return err
+		}
+
+		// Recalculate total paid on this invoice
+		var sumRes struct {
+			TotalPaid float64
+		}
+		if err := tx.Model(&domain.PurchaseInvoicePayment{}).
+			Select("COALESCE(SUM(amount), 0) as total_paid").
+			Where("purchase_invoice_id = ?", payment.PurchaseInvoiceID).
+			Scan(&sumRes).Error; err != nil {
+			return err
+		}
+
+		// Fetch invoice to check total_amount
+		var inv domain.PurchaseInvoice
+		if err := tx.Select("id, total_amount").Where("id = ?", payment.PurchaseInvoiceID).First(&inv).Error; err != nil {
+			return err
+		}
+
+		var newStatus domain.PaymentStatus
+		if sumRes.TotalPaid >= inv.TotalAmount {
+			newStatus = domain.PaymentStatusPaid
+		} else if sumRes.TotalPaid > 0 {
+			newStatus = domain.PaymentStatusPartial
+		} else {
+			newStatus = domain.PaymentStatusUnpaid
+		}
+
+		return tx.Model(&domain.PurchaseInvoice{}).
+			Where("id = ?", payment.PurchaseInvoiceID).
+			Updates(map[string]interface{}{
+				"paid_amount":    sumRes.TotalPaid,
+				"payment_status": newStatus,
+			}).Error
+	})
+}
+
+func (r *inventoryRepository) GetInvoicePaymentsByInvoiceID(ctx context.Context, invoiceID string) ([]domain.PurchaseInvoicePayment, error) {
+	var payments []domain.PurchaseInvoicePayment
+	err := r.db.WithContext(ctx).
+		Preload("CreatedBy").
+		Where("purchase_invoice_id = ?", invoiceID).
+		Order("payment_date DESC, created_at DESC").
+		Find(&payments).Error
+	return payments, err
+}
+
+func (r *inventoryRepository) UpdateInvoicePaymentStatus(ctx context.Context, invoiceID string, paidAmount float64, status domain.PaymentStatus) error {
+	return r.db.WithContext(ctx).Model(&domain.PurchaseInvoice{}).
+		Where("id = ?", invoiceID).
+		Updates(map[string]interface{}{
+			"paid_amount":    paidAmount,
+			"payment_status": status,
+		}).Error
 }
 
 // -------------------------------------------------------------

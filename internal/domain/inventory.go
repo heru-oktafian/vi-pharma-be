@@ -112,13 +112,31 @@ type PurchaseInvoice struct {
 	Subtotal       float64               `gorm:"type:decimal(14,2);not null;default:0" json:"subtotal"`
 	DiscountAmount float64               `gorm:"type:decimal(14,2);not null;default:0" json:"discount_amount"`
 	TaxAmount      float64               `gorm:"type:decimal(14,2);not null;default:0" json:"tax_amount"`
-	TotalAmount    float64               `gorm:"type:decimal(14,2);not null;default:0" json:"total_amount"`
-	Notes          string                `gorm:"type:text" json:"notes"`
-	ReceivedByID   string                `gorm:"type:varchar(15);not null" json:"received_by_id"`
-	ReceivedBy     *User                 `gorm:"foreignKey:ReceivedByID" json:"received_by,omitempty"`
-	Items          []PurchaseInvoiceItem `gorm:"foreignKey:PurchaseInvoiceID" json:"items,omitempty"`
-	CreatedAt      time.Time             `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt      time.Time             `gorm:"autoUpdateTime" json:"updated_at"`
+	TotalAmount    float64                  `gorm:"type:decimal(14,2);not null;default:0" json:"total_amount"`
+	PaidAmount     float64                  `gorm:"type:decimal(14,2);not null;default:0" json:"paid_amount"`
+	Notes          string                   `gorm:"type:text" json:"notes"`
+	ReceivedByID   string                   `gorm:"type:varchar(15);not null" json:"received_by_id"`
+	ReceivedBy     *User                    `gorm:"foreignKey:ReceivedByID" json:"received_by,omitempty"`
+	Items          []PurchaseInvoiceItem    `gorm:"foreignKey:PurchaseInvoiceID" json:"items,omitempty"`
+	Payments       []PurchaseInvoicePayment `gorm:"foreignKey:PurchaseInvoiceID" json:"payments,omitempty"`
+	CreatedAt      time.Time                `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt      time.Time                `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+// PurchaseInvoicePayment represents payment settlement / installment record against a PBF invoice
+type PurchaseInvoicePayment struct {
+	ID                string           `gorm:"type:varchar(15);primaryKey" json:"id"`
+	BranchID          string           `gorm:"type:varchar(15);not null;index" json:"branch_id"`
+	PurchaseInvoiceID string           `gorm:"type:varchar(15);not null;index" json:"purchase_invoice_id"`
+	PurchaseInvoice   *PurchaseInvoice `gorm:"foreignKey:PurchaseInvoiceID" json:"purchase_invoice,omitempty"`
+	PaymentDate       time.Time        `gorm:"type:date;not null" json:"payment_date"`
+	PaymentMethod     string           `gorm:"type:varchar(50);not null;default:'BANK_TRANSFER'" json:"payment_method"` // CASH, BANK_TRANSFER, POTONG_RETUR, LAINNYA
+	Amount            float64          `gorm:"type:decimal(14,2);not null" json:"amount"`
+	ReferenceNumber   string           `gorm:"type:varchar(100)" json:"reference_number"` // No bukti transfer atau No retur
+	Notes             string           `gorm:"type:text" json:"notes"`
+	CreatedByID       string           `gorm:"type:varchar(15);not null" json:"created_by_id"`
+	CreatedBy         *User            `gorm:"foreignKey:CreatedByID" json:"created_by,omitempty"`
+	CreatedAt         time.Time        `gorm:"autoCreateTime" json:"created_at"`
 }
 
 // PurchaseInvoiceItem represents single item line in PBF invoice
@@ -272,6 +290,47 @@ type FefoAlertItem struct {
 	AlertStatus  string    `json:"alert_status"` // EXPIRED, CRITICAL (<90d), WARNING (<180d), SAFE
 }
 
+// Accounts Payable (Hutang Pembelian) DTOs
+type CreateInvoicePaymentRequest struct {
+	PaymentDate     string  `json:"payment_date" validate:"required"` // Format: YYYY-MM-DD
+	PaymentMethod   string  `json:"payment_method" validate:"required"` // CASH, BANK_TRANSFER, POTONG_RETUR, LAINNYA
+	Amount          float64 `json:"amount" validate:"required,gt=0"`
+	ReferenceNumber string  `json:"reference_number"` // Bukti transfer / No. Retur PBF
+	Notes           string  `json:"notes"`
+}
+
+type AccountsPayableSummary struct {
+	TotalOutstandingDebt float64 `json:"total_outstanding_debt"` // Total hutang belum lunas
+	TotalInvoices        int64   `json:"total_invoices"`
+	UnpaidInvoicesCount  int64   `json:"unpaid_invoices_count"`
+	OverdueDebt          float64 `json:"overdue_debt"`           // Total hutang macet / lewat jatuh tempo
+	OverdueCount         int64   `json:"overdue_count"`          // Jumlah faktur lewat jatuh tempo
+	DueSoonDebt          float64 `json:"due_soon_debt"`          // Hutang jatuh tempo dalam 7 hari
+	DueSoonCount         int64   `json:"due_soon_count"`         // Jumlah faktur jatuh tempo dalam 7 hari
+	TotalPaidThisMonth   float64 `json:"total_paid_this_month"`  // Total pelunasan hutang bulan berjalan
+}
+
+type AccountsPayableFilter struct {
+	Search     string        `json:"search"`
+	SupplierID string        `json:"supplier_id"`
+	Status     PaymentStatus `json:"status"` // UNPAID, PARTIAL, PAID
+	IsOverdue  bool          `json:"is_overdue"`
+	DueSoon    bool          `json:"due_soon"` // Due within 7 days
+	StartDate  string        `json:"start_date"`
+	EndDate    string        `json:"end_date"`
+	SortBy     string        `json:"sort_by"` // due_date_asc, due_date_desc, debt_desc, date_desc
+	Page       int           `json:"page"`
+	Limit      int           `json:"limit"`
+}
+
+type PaginatedAccountsPayable struct {
+	Data       []PurchaseInvoice `json:"data"`
+	TotalItems int64             `json:"total_items"`
+	TotalPages int               `json:"total_pages"`
+	Page       int               `json:"page"`
+	Limit      int               `json:"limit"`
+}
+
 // -----------------------------------------------------------------------
 // Repository & Usecase Interfaces
 // -----------------------------------------------------------------------
@@ -295,6 +354,13 @@ type InventoryRepository interface {
 	GetPurchaseInvoiceByID(ctx context.Context, invoiceID string) (*PurchaseInvoice, error)
 	ListPurchaseInvoices(ctx context.Context, branchID string, page, limit int) ([]*PurchaseInvoice, int64, error)
 
+	// Accounts Payable & Payments
+	GetAccountsPayableSummary(ctx context.Context, branchID string) (*AccountsPayableSummary, error)
+	ListAccountsPayableInvoices(ctx context.Context, branchID string, filter AccountsPayableFilter) ([]PurchaseInvoice, int64, error)
+	CreateInvoicePayment(ctx context.Context, payment *PurchaseInvoicePayment) error
+	GetInvoicePaymentsByInvoiceID(ctx context.Context, invoiceID string) ([]PurchaseInvoicePayment, error)
+	UpdateInvoicePaymentStatus(ctx context.Context, invoiceID string, paidAmount float64, status PaymentStatus) error
+
 	// Opname
 	CreateOpname(ctx context.Context, opname *StockOpname) error
 	GetOpnameByID(ctx context.Context, opnameID string) (*StockOpname, error)
@@ -307,6 +373,12 @@ type InventoryUsecase interface {
 	ReceivePurchaseInvoice(ctx context.Context, branchID, userID string, req *CreatePurchaseInvoiceRequest) (*PurchaseInvoice, error)
 	ListPurchaseInvoices(ctx context.Context, branchID string, page, limit int) ([]*PurchaseInvoice, int64, error)
 	GetPurchaseInvoiceDetail(ctx context.Context, invoiceID string) (*PurchaseInvoice, error)
+
+	// Accounts Payable & Payments
+	GetAccountsPayableSummary(ctx context.Context, branchID string) (*AccountsPayableSummary, error)
+	ListAccountsPayableInvoices(ctx context.Context, branchID string, filter AccountsPayableFilter) (*PaginatedAccountsPayable, error)
+	RecordInvoicePayment(ctx context.Context, branchID, userID, invoiceID string, req *CreateInvoicePaymentRequest) (*PurchaseInvoicePayment, error)
+	GetInvoicePayments(ctx context.Context, invoiceID string) ([]PurchaseInvoicePayment, error)
 
 	RefillShelf(ctx context.Context, branchID, userID string, req *RefillShelfRequest) (*MedicineBatch, error)
 	ReturnToWarehouse(ctx context.Context, branchID, userID string, req *ReturnToWarehouseRequest) (*MedicineBatch, error)
