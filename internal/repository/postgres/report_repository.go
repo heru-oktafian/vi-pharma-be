@@ -511,3 +511,225 @@ func (r *reportRepository) GetCategoryMarginsReport(ctx context.Context, filter 
 
 	return results, nil
 }
+
+func (r *reportRepository) GetSIPNAPReport(ctx context.Context, filter domain.SIPNAPReportFilter) (*domain.SIPNAPReportResponse, error) {
+	branchID := filter.BranchID
+	if branchID == "" {
+		branchID = "CBG000000000001"
+	}
+
+	now := time.Now()
+	month := filter.Month
+	if month < 1 || month > 12 {
+		month = int(now.Month())
+	}
+	year := filter.Year
+	if year < 2000 {
+		year = now.Year()
+	}
+
+	// Calculate period start and end
+	startDate := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+	endDate := startDate.AddDate(0, 1, 0).Add(-time.Second)
+
+	startDateStr := startDate.Format("2006-01-02 15:04:05")
+	endDateStr := endDate.Format("2006-01-02 15:04:05")
+	startDateOnly := startDate.Format("2006-01-02")
+	endDateOnly := endDate.Format("2006-01-02")
+
+	// Get Branch Info
+	var branch domain.Branch
+	_ = r.db.WithContext(ctx).Where("id = ?", branchID).First(&branch).Error
+
+	branchName := branch.BranchName
+	if branchName == "" {
+		branchName = "Apotek Vi-Pharma Pusat"
+	}
+	branchAddress := branch.Address
+	if branchAddress == "" {
+		branchAddress = "Jl. Pemuda No. 10, Jakarta"
+	}
+	siaNum := branch.SiaID
+	if siaNum == "" {
+		siaNum = "SIA-198402/DKS/2024"
+	}
+	sipaNum := branch.Sipa
+	if sipaNum == "" {
+		sipaNum = "SIPA-199203/STRA/2024"
+	}
+	apjName := branch.SipaName
+	if apjName == "" {
+		apjName = "apt. Heru Oktafian, S.Farm."
+	}
+
+	// Query controlled medicines (narkotika, psikotropika, prekursor, oot)
+	medQuery := r.db.WithContext(ctx).Model(&domain.Medicine{}).
+		Preload("BaseUnit").
+		Where("is_active = true")
+
+	if filter.Classification != "" && filter.Classification != "ALL" {
+		medQuery = medQuery.Where("drug_classification = ?", filter.Classification)
+	} else {
+		medQuery = medQuery.Where("drug_classification IN ('narkotika', 'psikotropika', 'prekursor', 'oot')")
+	}
+
+	var medicines []domain.Medicine
+	if err := medQuery.Order("drug_classification ASC, name ASC").Find(&medicines).Error; err != nil {
+		return nil, err
+	}
+
+	var reportItems []domain.SIPNAPReportItem
+
+	for _, med := range medicines {
+		// 1. Initial Stock (Saldo Awal per tanggal 1)
+		var initialStock float64
+		_ = r.db.WithContext(ctx).Table("stock_mutations").
+			Select("COALESCE(SUM(qty_in - qty_out), 0)").
+			Where("medicine_id = ? AND branch_id = ? AND created_at < ?", med.ID, branchID, startDateStr).
+			Scan(&initialStock).Error
+
+		// Fallback: if no prior mutation logged, compute from current total stock
+		if initialStock <= 0 {
+			var currentStock float64
+			_ = r.db.WithContext(ctx).Table("medicine_batches").
+				Select("COALESCE(SUM(total_stock), 0)").
+				Where("medicine_id = ? AND branch_id = ? AND is_active = true", med.ID, branchID).
+				Scan(&currentStock).Error
+			initialStock = currentStock
+		}
+
+		// 2. Inflows (PBF Faktur Pembelian)
+		type rawIn struct {
+			Qty           float64   `gorm:"column:qty"`
+			BatchNumber   string    `gorm:"column:batch_number"`
+			InvoiceNumber string    `gorm:"column:invoice_number"`
+			InvoiceDate   time.Time `gorm:"column:invoice_date"`
+			SupplierName  string    `gorm:"column:supplier_name"`
+		}
+		var rawIns []rawIn
+		_ = r.db.WithContext(ctx).Raw(`
+			SELECT pii.qty, pii.batch_number, pi.invoice_number, pi.invoice_date, COALESCE(s.name, 'Distributor PBF') as supplier_name
+			FROM purchase_invoice_items pii
+			JOIN purchase_invoices pi ON pi.id = pii.invoice_id
+			LEFT JOIN suppliers s ON s.id = pi.supplier_id
+			WHERE pii.medicine_id = ? AND pi.branch_id = ? AND pi.invoice_date BETWEEN ? AND ?
+			ORDER BY pi.invoice_date ASC
+		`, med.ID, branchID, startDateOnly, endDateOnly).Scan(&rawIns).Error
+
+		var totalIn float64
+		var inDetails []domain.SIPNAPInDetail
+		for _, rin := range rawIns {
+			totalIn += rin.Qty
+			inDetails = append(inDetails, domain.SIPNAPInDetail{
+				InvoiceNumber: rin.InvoiceNumber,
+				InvoiceDate:   rin.InvoiceDate.Format("2006-01-02"),
+				SupplierName:  rin.SupplierName,
+				BatchNumber:   rin.BatchNumber,
+				Qty:           rin.Qty,
+			})
+		}
+
+		// 3. Outflows (Doctor Prescriptions & POS Sales)
+		type rawOut struct {
+			Qty               float64   `gorm:"column:qty"`
+			TransactionNumber string    `gorm:"column:transaction_number"`
+			TransactionDate   time.Time `gorm:"column:transaction_date"`
+			DoctorName        string    `gorm:"column:doctor_name"`
+			DoctorSIP         string    `gorm:"column:doctor_sip"`
+			PatientName       string    `gorm:"column:patient_name"`
+			PatientAddress    string    `gorm:"column:patient_address"`
+		}
+		var rawOuts []rawOut
+
+		// Non-racik prescriptions
+		_ = r.db.WithContext(ctx).Raw(`
+			SELECT pri.qty, p.prescription_number as transaction_number, p.prescription_date as transaction_date,
+			       p.doctor_name, COALESCE(p.doctor_sip, '-') as doctor_sip, p.patient_name, COALESCE(p.patient_address, '-') as patient_address
+			FROM prescription_items pri
+			JOIN prescriptions p ON p.id = pri.prescription_id
+			WHERE pri.medicine_id = ? AND p.branch_id = ? AND p.prescription_date BETWEEN ? AND ?
+		`, med.ID, branchID, startDateOnly, endDateOnly).Scan(&rawOuts).Error
+
+		// Compound racikan prescriptions
+		var compoundOuts []rawOut
+		_ = r.db.WithContext(ctx).Raw(`
+			SELECT pci.total_qty as qty, p.prescription_number as transaction_number, p.prescription_date as transaction_date,
+			       p.doctor_name, COALESCE(p.doctor_sip, '-') as doctor_sip, p.patient_name, COALESCE(p.patient_address, '-') as patient_address
+			FROM prescription_compound_items pci
+			JOIN prescription_items pri ON pri.id = pci.prescription_item_id
+			JOIN prescriptions p ON p.id = pri.prescription_id
+			WHERE pci.medicine_id = ? AND p.branch_id = ? AND p.prescription_date BETWEEN ? AND ?
+		`, med.ID, branchID, startDateOnly, endDateOnly).Scan(&compoundOuts).Error
+		rawOuts = append(rawOuts, compoundOuts...)
+
+		// Direct POS sales
+		var salesOuts []rawOut
+		_ = r.db.WithContext(ctx).Raw(`
+			SELECT si.qty, s.invoice_number as transaction_number, s.created_at as transaction_date,
+			       'Resep Dokter' as doctor_name, '-' as doctor_sip, s.customer_name as patient_name, '-' as patient_address
+			FROM sale_items si
+			JOIN sales s ON s.id = si.sale_id
+			WHERE si.medicine_id = ? AND s.branch_id = ? AND s.created_at BETWEEN ? AND ?
+		`, med.ID, branchID, startDateStr, endDateStr).Scan(&salesOuts).Error
+		rawOuts = append(rawOuts, salesOuts...)
+
+		var totalOut float64
+		var outDetails []domain.SIPNAPOutDetail
+		for _, rout := range rawOuts {
+			totalOut += rout.Qty
+			outDetails = append(outDetails, domain.SIPNAPOutDetail{
+				TransactionNumber: rout.TransactionNumber,
+				TransactionDate:   rout.TransactionDate.Format("2006-01-02"),
+				DoctorName:        rout.DoctorName,
+				DoctorSIP:         rout.DoctorSIP,
+				PatientName:       rout.PatientName,
+				PatientAddress:    rout.PatientAddress,
+				Qty:               rout.Qty,
+			})
+		}
+
+		finalStock := initialStock + totalIn - totalOut
+		if finalStock < 0 {
+			finalStock = 0
+		}
+
+		unitName := "Pcs"
+		if med.BaseUnit != nil && med.BaseUnit.Name != "" {
+			unitName = med.BaseUnit.Name
+		}
+
+		dosageForm := med.DosageForm
+		if dosageForm == "" {
+			dosageForm = "Tablet"
+		}
+
+		reportItems = append(reportItems, domain.SIPNAPReportItem{
+			MedicineID:      med.ID,
+			MedicineName:    med.Name,
+			Classification:  med.DrugClassification,
+			DosageForm:      dosageForm,
+			UnitName:        unitName,
+			InitialStock:    initialStock,
+			TotalIn:         totalIn,
+			TotalOut:        totalOut,
+			Adjustment:      0,
+			FinalStock:      finalStock,
+			InTransactions:  inDetails,
+			OutTransactions: outDetails,
+		})
+	}
+
+	return &domain.SIPNAPReportResponse{
+		BranchID:             branchID,
+		BranchName:           branchName,
+		BranchAddress:        branchAddress,
+		SIANumber:            siaNum,
+		SIPANumber:           sipaNum,
+		PharmacistName:       apjName,
+		PeriodMonth:          month,
+		PeriodYear:           year,
+		ClassificationFilter: filter.Classification,
+		TotalMedicines:       len(reportItems),
+		Items:                reportItems,
+	}, nil
+}

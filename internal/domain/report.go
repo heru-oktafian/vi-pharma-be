@@ -115,10 +115,69 @@ type ReportFilter struct {
 	TargetMarginPercent float64 `json:"target_margin_percent"`
 }
 
+// SIPNAPInDetail represents incoming batch deliveries from PBF for SIPNAP Kemenkes
+type SIPNAPInDetail struct {
+	InvoiceNumber string  `json:"invoice_number"`
+	InvoiceDate   string  `json:"invoice_date"`
+	SupplierName  string  `json:"supplier_name"`
+	BatchNumber   string  `json:"batch_number"`
+	Qty           float64 `json:"qty"`
+}
+
+// SIPNAPOutDetail represents outgoing doctor prescription dispensations for SIPNAP Kemenkes
+type SIPNAPOutDetail struct {
+	TransactionNumber string  `json:"transaction_number"` // No. Resep / No. Nota Kasir
+	TransactionDate   string  `json:"transaction_date"`
+	DoctorName        string  `json:"doctor_name"`
+	DoctorSIP         string  `json:"doctor_sip"`
+	PatientName       string  `json:"patient_name"`
+	PatientAddress    string  `json:"patient_address"`
+	Qty               float64 `json:"qty"`
+}
+
+// SIPNAPReportItem represents each controlled drug item in the monthly SIPNAP report
+type SIPNAPReportItem struct {
+	MedicineID      string             `json:"medicine_id"`
+	MedicineName    string             `json:"medicine_name"`
+	Classification  DrugClassification `json:"classification"` // narkotika, psikotropika, prekursor, oot
+	DosageForm      string             `json:"dosage_form"`    // Tablet, Sirup, Injeksi, Kapsul
+	UnitName        string             `json:"unit_name"`      // Tablet, Botol, Ampul
+	InitialStock    float64            `json:"initial_stock"`  // Saldo Awal per tgl 1 bulan tsb
+	TotalIn         float64            `json:"total_in"`       // Total Pemasukan dari Faktur PBF
+	TotalOut        float64            `json:"total_out"`      // Total Pengeluaran (Resep Dokter / Pasien)
+	Adjustment      float64            `json:"adjustment"`     // Penyesuaian / Opname / Pemusnahan
+	FinalStock      float64            `json:"final_stock"`    // Saldo Akhir (Stok Akhir Bulan)
+	InTransactions  []SIPNAPInDetail   `json:"in_transactions"`
+	OutTransactions []SIPNAPOutDetail  `json:"out_transactions"`
+}
+
+// SIPNAPReportResponse represents the full monthly official SIPNAP report
+type SIPNAPReportResponse struct {
+	BranchID             string             `json:"branch_id"`
+	BranchName           string             `json:"branch_name"`
+	BranchAddress        string             `json:"branch_address"`
+	SIANumber            string             `json:"sia_number"`
+	SIPANumber           string             `json:"sipa_number"`
+	PharmacistName       string             `json:"pharmacist_name"`
+	PeriodMonth          int                `json:"period_month"` // 1 - 12
+	PeriodYear           int                `json:"period_year"`  // e.g. 2026
+	ClassificationFilter string             `json:"classification_filter"` // ALL, narkotika, psikotropika, prekursor
+	TotalMedicines       int                `json:"total_medicines"`
+	Items                []SIPNAPReportItem `json:"items"`
+}
+
+type SIPNAPReportFilter struct {
+	BranchID       string `json:"branch_id"`
+	Month          int    `json:"month"` // 1 - 12
+	Year           int    `json:"year"`  // e.g. 2026
+	Classification string `json:"classification"` // ALL, narkotika, psikotropika, prekursor, oot
+}
+
 type ReportRepository interface {
 	GetStaffPerformanceReport(ctx context.Context, filter ReportFilter) (*StaffPerformanceReportResponse, error)
 	GetSalesSummaryReport(ctx context.Context, filter ReportFilter) (*SalesSummaryReportResponse, error)
 	GetCategoryMarginsReport(ctx context.Context, filter ReportFilter) ([]CategoryMarginItem, error)
+	GetSIPNAPReport(ctx context.Context, filter SIPNAPReportFilter) (*SIPNAPReportResponse, error)
 	UpdateBranchBonusSetting(ctx context.Context, branchID string, dailyMarginTarget, dailyBonusReward float64) error
 }
 
@@ -126,5 +185,6 @@ type ReportUsecase interface {
 	GetStaffPerformanceReport(ctx context.Context, filter ReportFilter) (*StaffPerformanceReportResponse, error)
 	GetSalesSummaryReport(ctx context.Context, filter ReportFilter) (*SalesSummaryReportResponse, error)
 	GetCategoryMarginsReport(ctx context.Context, filter ReportFilter) ([]CategoryMarginItem, error)
+	GetSIPNAPReport(ctx context.Context, filter SIPNAPReportFilter) (*SIPNAPReportResponse, error)
 	UpdateBranchBonusSetting(ctx context.Context, branchID string, req UpdateBranchBonusSettingRequest) error
 }

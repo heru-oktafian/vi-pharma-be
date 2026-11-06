@@ -106,3 +106,26 @@ func (h *ReportHandler) GetCategoryMargins(c *fiber.Ctx) error {
 
 	return SuccessResponse(c, fiber.StatusOK, "Analisis profitabilitas kategori berhasil dimuat", items)
 }
+
+// GetSIPNAPReport handles GET /api/v1/reports/sipnap
+func (h *ReportHandler) GetSIPNAPReport(c *fiber.Ctx) error {
+	branchID := getBranchID(c)
+	month, _ := strconv.Atoi(c.Query("month", "0"))
+	year, _ := strconv.Atoi(c.Query("year", "0"))
+	classification := c.Query("classification", "ALL")
+
+	filter := domain.SIPNAPReportFilter{
+		BranchID:       branchID,
+		Month:          month,
+		Year:           year,
+		Classification: classification,
+	}
+
+	report, err := h.reportUsecase.GetSIPNAPReport(c.Context(), filter)
+	if err != nil {
+		return ErrorResponse(c, fiber.StatusInternalServerError, "Gagal memuat laporan SIPNAP Kemenkes", err)
+	}
+
+	return SuccessResponse(c, fiber.StatusOK, "Laporan resmi SIPNAP Kemenkes berhasil dimuat", report)
+}
+

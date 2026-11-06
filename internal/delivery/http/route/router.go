@@ -264,4 +264,5 @@ func SetupRoutes(
 	reports.Put("/branch-bonus-setting", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), reportHandler.UpdateBranchBonusSetting)
 	reports.Get("/sales-summary", reportHandler.GetSalesSummary)
 	reports.Get("/category-margins", reportHandler.GetCategoryMargins)
+	reports.Get("/sipnap", reportHandler.GetSIPNAPReport)
 }

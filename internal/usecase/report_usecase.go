@@ -28,6 +28,10 @@ func (u *reportUsecase) GetCategoryMarginsReport(ctx context.Context, filter dom
 	return u.reportRepo.GetCategoryMarginsReport(ctx, filter)
 }
 
+func (u *reportUsecase) GetSIPNAPReport(ctx context.Context, filter domain.SIPNAPReportFilter) (*domain.SIPNAPReportResponse, error) {
+	return u.reportRepo.GetSIPNAPReport(ctx, filter)
+}
+
 func (u *reportUsecase) UpdateBranchBonusSetting(ctx context.Context, branchID string, req domain.UpdateBranchBonusSettingRequest) error {
 	if branchID == "" {
 		branchID = "CBG000000000001"
