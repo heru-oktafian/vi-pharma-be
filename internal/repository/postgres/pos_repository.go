@@ -112,7 +112,10 @@ func (r *posRepository) FindSales(ctx context.Context, branchID string, filter d
 
 	if filter.Search != "" {
 		s := "%" + filter.Search + "%"
-		query = query.Where("invoice_number ILIKE ? OR customer_name ILIKE ?", s, s)
+		query = query.Where(
+			"invoice_number ILIKE ? OR customer_name ILIKE ? OR id IN (SELECT sale_id FROM sale_items si JOIN medicines m ON m.id = si.medicine_id WHERE m.name ILIKE ?)",
+			s, s, s,
+		)
 	}
 
 	if filter.PaymentMethod != "" {
