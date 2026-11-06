@@ -345,10 +345,23 @@ func (r *reportRepository) GetSalesSummaryReport(ctx context.Context, filter dom
 		  AND s.created_at BETWEEN ? AND ?
 	`, branchID, startDateTime, endDateTime).Scan(&overall)
 
-	totalMargin := overall.TotalRevenue - overall.TotalCOGS
+	// 1.1 Customer Returns
+	var totalReturns float64
+	_ = r.db.WithContext(ctx).Raw(`
+		SELECT COALESCE(SUM(total_refund), 0)
+		FROM sales_returns
+		WHERE branch_id = ?
+		  AND return_date BETWEEN ? AND ?
+	`, branchID, startDate, endDate).Scan(&totalReturns)
+
+	netRevenue := overall.TotalRevenue - totalReturns
+	if netRevenue < 0 {
+		netRevenue = 0
+	}
+	totalMargin := netRevenue - overall.TotalCOGS
 	var marginPercent float64
-	if overall.TotalRevenue > 0 {
-		marginPercent = math.Round((totalMargin/overall.TotalRevenue)*10000) / 100
+	if netRevenue > 0 {
+		marginPercent = math.Round((totalMargin/netRevenue)*10000) / 100
 	}
 
 	// 2. Payment methods breakdown
@@ -427,6 +440,8 @@ func (r *reportRepository) GetSalesSummaryReport(ctx context.Context, filter dom
 		PeriodEnd:            endDate,
 		TotalTransactions:    overall.TotalTransactions,
 		TotalRevenue:         overall.TotalRevenue,
+		TotalReturns:         totalReturns,
+		NetRevenue:           netRevenue,
 		TotalCOGS:            overall.TotalCOGS,
 		TotalMargin:          totalMargin,
 		MarginPercent:        marginPercent,

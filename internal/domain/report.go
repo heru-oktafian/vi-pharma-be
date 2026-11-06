@@ -97,9 +97,11 @@ type SalesSummaryReportResponse struct {
 	PeriodStart          string                 `json:"period_start"`
 	PeriodEnd            string                 `json:"period_end"`
 	TotalTransactions    int64                  `json:"total_transactions"`
-	TotalRevenue         float64                `json:"total_revenue"`
+	TotalRevenue         float64                `json:"total_revenue"` // Omzet Penjualan Kotor
+	TotalReturns         float64                `json:"total_returns"` // Retur Penjualan dari Pasien
+	NetRevenue           float64                `json:"net_revenue"`   // Omzet Bersih (Gross - Retur)
 	TotalCOGS            float64                `json:"total_cogs"`
-	TotalMargin          float64                `json:"total_margin"`
+	TotalMargin          float64                `json:"total_margin"`  // Laba Kotor Riil (Net Omzet - HPP)
 	MarginPercent        float64                `json:"margin_percent"`
 	PaymentMethodSummary []PaymentMethodSummary `json:"payment_methods"`
 	DailyTrends          []DailySalesTrend      `json:"daily_trends"`
