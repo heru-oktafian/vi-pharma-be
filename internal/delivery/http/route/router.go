@@ -28,6 +28,7 @@ func SetupRoutes(
 	procurementHandler *handler.ProcurementHandler,
 	purchaseReturnHandler *handler.PurchaseReturnHandler,
 	posHandler *handler.POSHandler,
+	salesReturnHandler *handler.SalesReturnHandler,
 	prescriptionHandler *handler.PrescriptionHandler,
 	reportHandler *handler.ReportHandler,
 ) {
@@ -238,6 +239,10 @@ func SetupRoutes(
 	pos.Get("/transactions", posHandler.ListTransactions)
 	pos.Get("/transactions/:id", posHandler.GetTransactionByID)
 	pos.Get("/summary-today", posHandler.GetTodaySummary)
+	pos.Get("/sales/:id/returnable", salesReturnHandler.GetSaleReturnable)
+	pos.Post("/returns", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist, domain.RoleCashier), salesReturnHandler.CreateReturn)
+	pos.Get("/returns", salesReturnHandler.ListReturns)
+	pos.Get("/returns/:id", salesReturnHandler.GetReturnByID)
 
 	// -------------------------------------------------------------
 	// 10. Prescription & Compounding (Pelayanan Resep & Farmasi)

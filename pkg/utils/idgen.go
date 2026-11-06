@@ -156,3 +156,13 @@ func GenerateInvoicePaymentID() string {
 	return generateIDWithPrefix("PIP")
 }
 
+// GenerateSalesReturnID generates a 15-character unique identifier for customer sales returns (prefix "SRT")
+func GenerateSalesReturnID() string {
+	return generateIDWithPrefix("SRT")
+}
+
+// GenerateSalesReturnItemID generates a 15-character unique identifier for sales return items (prefix "SRI")
+func GenerateSalesReturnItemID() string {
+	return generateIDWithPrefix("SRI")
+}
+

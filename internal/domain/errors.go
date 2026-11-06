@@ -45,5 +45,8 @@ var (
 	ErrInvoiceAlreadyPaid              = errors.New("faktur pembelian sudah lunas")
 	ErrPaymentExceedsBalance           = errors.New("nominal pembayaran melebihi sisa hutang faktur")
 	ErrInvalidPaymentValue             = errors.New("nominal pembayaran harus lebih besar dari 0")
+	ErrSalesReturnNotFound             = errors.New("data retur penjualan tidak ditemukan")
+	ErrReturnQtyExceedsSale            = errors.New("jumlah retur melebihi sisa qty obat yang dibeli pada struk transaksi ini")
+	ErrSaleAlreadyFullyReturned        = errors.New("seluruh obat pada struk penjualan ini sudah diretur sebelumnya")
 	ErrInternalServer                  = errors.New("internal server error")
 )

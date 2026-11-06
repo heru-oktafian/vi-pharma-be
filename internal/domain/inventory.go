@@ -15,6 +15,7 @@ const (
 	MutationRefillShelf       MutationType = "REFILL_RAK"      // Transfer internal: Gudang -> Rak
 	MutationReturnToWarehouse MutationType = "KEMBALI_GUDANG"  // Transfer internal: Rak -> Gudang
 	MutationReturnSupplier    MutationType = "RETUR_PBF"       // Keluar: Retur ke PBF
+	MutationReturnCustomer    MutationType = "RETUR_PASIEN"    // Masuk: Retur Penjualan Pasien
 	MutationAdjustment        MutationType = "OPNAME"          // Koreksi Opname Fisik
 	MutationInitialBalance    MutationType = "SALDO_AWAL"      // Saldo Awal Fisik Perdana
 )
