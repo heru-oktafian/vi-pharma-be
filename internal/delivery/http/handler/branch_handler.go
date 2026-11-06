@@ -102,3 +102,41 @@ func (h *BranchHandler) AssignUserBranch(c *fiber.Ctx) error {
 
 	return SuccessResponse(c, fiber.StatusOK, "User successfully assigned to branch", nil)
 }
+
+// UpdateBranch handles PUT /api/v1/branches/:id
+func (h *BranchHandler) UpdateBranch(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Branch ID is required", nil)
+	}
+
+	var req domain.UpdateBranchRequest
+	if err := c.BodyParser(&req); err != nil {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Invalid request body", err)
+	}
+
+	branch, err := h.branchUsecase.UpdateBranch(c.Context(), id, &req)
+	if err != nil {
+		if errors.Is(err, domain.ErrBranchNotFound) {
+			return ErrorResponse(c, fiber.StatusNotFound, "Branch not found", nil)
+		}
+		return ErrorResponse(c, fiber.StatusInternalServerError, "Failed to update branch", err)
+	}
+
+	return SuccessResponse(c, fiber.StatusOK, "Branch updated successfully", branch)
+}
+
+// GetUserBranches handles GET /api/v1/branches/user/:userId
+func (h *BranchHandler) GetUserBranches(c *fiber.Ctx) error {
+	userId := c.Params("userId")
+	if userId == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "User ID is required", nil)
+	}
+
+	branches, err := h.branchUsecase.GetUserBranches(c.Context(), userId)
+	if err != nil {
+		return ErrorResponse(c, fiber.StatusInternalServerError, "Failed to retrieve user branches", err)
+	}
+
+	return SuccessResponse(c, fiber.StatusOK, "User branches retrieved successfully", branches)
+}

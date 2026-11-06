@@ -86,3 +86,26 @@ func (h *UserHandler) ListUsers(c *fiber.Ctx) error {
 		},
 	})
 }
+
+// UpdateUser handles PUT /api/v1/users/:id
+func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "User ID is required", nil)
+	}
+
+	var req domain.UpdateUserRequest
+	if err := c.BodyParser(&req); err != nil {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Invalid request body", err)
+	}
+
+	user, err := h.userUsecase.UpdateUser(c.Context(), id, &req)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return ErrorResponse(c, fiber.StatusNotFound, "User not found", nil)
+		}
+		return ErrorResponse(c, fiber.StatusInternalServerError, "Failed to update user", err)
+	}
+
+	return SuccessResponse(c, fiber.StatusOK, "User updated successfully", user)
+}

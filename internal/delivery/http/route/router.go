@@ -86,6 +86,7 @@ func SetupRoutes(
 	users.Post("", userHandler.CreateUser)
 	users.Get("", userHandler.ListUsers)
 	users.Get("/:id", userHandler.GetUserByID)
+	users.Put("/:id", userHandler.UpdateUser)
 
 	// 4. Branch Management (Protected: SuperAdmin / Admin)
 	branches := v1.Group("/branches")
@@ -94,7 +95,9 @@ func SetupRoutes(
 	branches.Post("", branchHandler.CreateBranch)
 	branches.Get("", branchHandler.ListBranches)
 	branches.Get("/:id", branchHandler.GetBranchByID)
+	branches.Put("/:id", branchHandler.UpdateBranch)
 	branches.Post("/assign", branchHandler.AssignUserBranch)
+	branches.Get("/user/:userId", branchHandler.GetUserBranches)
 
 	// 5. Workstation / Active Branch Features (Protected by Selected Branch)
 	// 5.1 Workstation WebSocket listener for real-time remote logout

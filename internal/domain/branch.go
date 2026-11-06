@@ -104,9 +104,29 @@ type BranchSummaryResponse struct {
 	IsDefault  bool         `json:"is_default"`
 }
 
+type UpdateBranchRequest struct {
+	BranchName    string        `json:"branch_name"`
+	Address       string        `json:"address"`
+	Phone         string        `json:"phone"`
+	Email         string        `json:"email"`
+	SiaID         string        `json:"sia_id"`
+	SiaName       string        `json:"sia_name"`
+	Sipa          string        `json:"sipa"`
+	SipaName      string        `json:"sipa_name"`
+	PsaID         string        `json:"psa_id"`
+	PsaName       string        `json:"psa_name"`
+	BankName      string        `json:"bank_name"`
+	AccountName   string        `json:"account_name"`
+	AccountNumber string        `json:"account_number"`
+	TaxPercentage int64         `json:"tax_percentage"`
+	JournalMethod JournalMethod `json:"journal_method"`
+	BranchStatus  BranchStatus  `json:"branch_status"`
+}
+
 // BranchRepository interface
 type BranchRepository interface {
 	Create(ctx context.Context, branch *Branch) error
+	Update(ctx context.Context, branch *Branch) error
 	FindByID(ctx context.Context, id string) (*Branch, error)
 	FindByCode(ctx context.Context, code string) (*Branch, error)
 	List(ctx context.Context, limit, offset int) ([]Branch, int64, error)

@@ -81,6 +81,13 @@ type CreateUserRequest struct {
 	UserStatus UserStatus `json:"user_status"`
 }
 
+type UpdateUserRequest struct {
+	Name       string     `json:"name"`
+	UserRole   UserRole   `json:"user_role"`
+	UserStatus UserStatus `json:"user_status"`
+	Password   string     `json:"password,omitempty"`
+}
+
 // UserRepository interface defines data access contracts
 type UserRepository interface {
 	Create(ctx context.Context, user *User) error
@@ -103,4 +110,5 @@ type UserUsecase interface {
 	CreateUser(ctx context.Context, req *CreateUserRequest) (*UserResponse, error)
 	GetUserByID(ctx context.Context, id string) (*UserResponse, error)
 	ListUsers(ctx context.Context, page, pageSize int) ([]UserResponse, int64, error)
+	UpdateUser(ctx context.Context, id string, req *UpdateUserRequest) (*UserResponse, error)
 }

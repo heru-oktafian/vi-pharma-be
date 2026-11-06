@@ -116,6 +116,44 @@ func (u *userUsecase) ListUsers(ctx context.Context, page, pageSize int) ([]doma
 	return responseList, total, nil
 }
 
+func (u *userUsecase) UpdateUser(ctx context.Context, id string, req *domain.UpdateUserRequest) (*domain.UserResponse, error) {
+	user, err := u.userRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Name != "" {
+		user.Name = req.Name
+	}
+	if req.UserRole != "" && isValidRole(req.UserRole) {
+		user.UserRole = req.UserRole
+	}
+	if req.UserStatus != "" && isValidStatus(req.UserStatus) {
+		user.UserStatus = req.UserStatus
+	}
+	if req.Password != "" {
+		hashed, err := utils.HashPassword(req.Password)
+		if err != nil {
+			return nil, domain.ErrInternalServer
+		}
+		user.Password = hashed
+	}
+
+	if err := u.userRepo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return &domain.UserResponse{
+		ID:         user.ID,
+		Username:   user.Username,
+		Name:       user.Name,
+		UserRole:   user.UserRole,
+		UserStatus: user.UserStatus,
+		CreatedAt:  user.CreatedAt,
+		UpdatedAt:  user.UpdatedAt,
+	}, nil
+}
+
 func isValidRole(role domain.UserRole) bool {
 	switch role {
 	case domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist, domain.RoleCashier, domain.RoleInventory:

@@ -22,6 +22,10 @@ func (r *branchRepository) Create(ctx context.Context, branch *domain.Branch) er
 	return r.db.WithContext(ctx).Create(branch).Error
 }
 
+func (r *branchRepository) Update(ctx context.Context, branch *domain.Branch) error {
+	return r.db.WithContext(ctx).Save(branch).Error
+}
+
 func (r *branchRepository) FindByID(ctx context.Context, id string) (*domain.Branch, error) {
 	var branch domain.Branch
 	err := r.db.WithContext(ctx).First(&branch, "id = ?", id).Error
