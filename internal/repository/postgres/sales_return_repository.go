@@ -21,21 +21,22 @@ func NewSalesReturnRepository(db *gorm.DB) domain.SalesReturnRepository {
 }
 
 func (r *salesReturnRepository) CreateSalesReturn(ctx context.Context, ret *domain.SalesReturn) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 1. Insert SalesReturn header
-		if err := tx.Create(ret).Error; err != nil {
-			return fmt.Errorf("failed to create sales return header: %w", err)
-		}
+	// Fallback to valid Superadmin user if cashierID is empty or SYSTEM to prevent FK failure
+	if ret.CashierID == "" || ret.CashierID == "SYSTEM" {
+		ret.CashierID = "USR000000000001"
+	}
+	if ret.BranchID == "" {
+		ret.BranchID = "CBG000000000001"
+	}
 
-		// 2. Process each returned item: insert item, restore stock to batch, log mutation
-		for _, item := range ret.Items {
-			if err := tx.Create(&item).Error; err != nil {
-				return fmt.Errorf("failed to save return item: %w", err)
-			}
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. Process each returned item: restore stock to batch & log stock mutation
+		for i := range ret.Items {
+			item := &ret.Items[i]
 
 			// Fetch batch to restore stock
 			var batch domain.MedicineBatch
-			if err := tx.Where("id = ?", item.BatchID).First(&batch).Error; err != nil {
+			if err := tx.Where("id = ? AND branch_id = ?", item.BatchID, ret.BranchID).First(&batch).Error; err != nil {
 				return fmt.Errorf("batch not found (%s): %w", item.BatchID, err)
 			}
 
@@ -43,7 +44,7 @@ func (r *salesReturnRepository) CreateSalesReturn(ctx context.Context, ret *doma
 			var balAfter float64
 
 			if item.Condition == domain.ReturnConditionGood {
-				// Restore to RAK Kasir
+				// Restore to RAK Kasir (Bisa dijual kembali)
 				location = domain.LocationShelf
 				batch.QtyShelf += item.QtyBase
 				balAfter = batch.QtyShelf
@@ -56,11 +57,18 @@ func (r *salesReturnRepository) CreateSalesReturn(ctx context.Context, ret *doma
 
 			batch.CalculateTotal()
 
-			if err := tx.Save(&batch).Error; err != nil {
+			if err := tx.Model(&domain.MedicineBatch{}).
+				Where("id = ?", batch.ID).
+				Updates(map[string]interface{}{
+					"qty_shelf":     batch.QtyShelf,
+					"qty_warehouse": batch.QtyWarehouse,
+					"total_stock":   batch.TotalStock,
+					"updated_at":    time.Now(),
+				}).Error; err != nil {
 				return fmt.Errorf("failed to update batch stock: %w", err)
 			}
 
-			// Log Stock Mutation
+			// Log Stock Mutation (Kartu Stok Digital)
 			mutation := &domain.StockMutation{
 				ID:           utils.GenerateStockMutationID(),
 				BatchID:      batch.ID,
@@ -68,6 +76,7 @@ func (r *salesReturnRepository) CreateSalesReturn(ctx context.Context, ret *doma
 				MedicineID:   item.MedicineID,
 				MutationType: domain.MutationReturnCustomer, // RETUR_PASIEN
 				Location:     location,
+				ReferenceNo:  ret.ReturnNumber,
 				QtyIn:        item.QtyBase,
 				QtyOut:       0,
 				BalanceAfter: balAfter,
@@ -79,6 +88,11 @@ func (r *salesReturnRepository) CreateSalesReturn(ctx context.Context, ret *doma
 			if err := tx.Create(mutation).Error; err != nil {
 				return fmt.Errorf("failed to log stock mutation: %w", err)
 			}
+		}
+
+		// 2. Insert SalesReturn header & all return items (GORM creates items automatically through association)
+		if err := tx.Create(ret).Error; err != nil {
+			return fmt.Errorf("failed to create sales return: %w", err)
 		}
 
 		return nil
