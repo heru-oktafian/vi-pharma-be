@@ -131,7 +131,10 @@ func (r *salesReturnRepository) FindSalesReturns(ctx context.Context, branchID s
 
 	if filter.Search != "" {
 		s := "%" + filter.Search + "%"
-		query = query.Where("(return_number ILIKE ? OR invoice_number ILIKE ? OR customer_name ILIKE ?)", s, s, s)
+		query = query.Where(
+			"(return_number ILIKE ? OR invoice_number ILIKE ? OR customer_name ILIKE ? OR id IN (SELECT sales_return_id FROM sales_return_items sri JOIN medicines m ON m.id = sri.medicine_id WHERE m.name ILIKE ?))",
+			s, s, s, s,
+		)
 	}
 
 	if filter.RefundType != "" {
@@ -139,10 +142,10 @@ func (r *salesReturnRepository) FindSalesReturns(ctx context.Context, branchID s
 	}
 
 	if filter.StartDate != "" {
-		query = query.Where("return_date >= ?", filter.StartDate)
+		query = query.Where("(return_date >= ? OR created_at >= ?)", filter.StartDate, filter.StartDate+" 00:00:00")
 	}
 	if filter.EndDate != "" {
-		query = query.Where("return_date <= ?", filter.EndDate)
+		query = query.Where("(return_date <= ? OR created_at <= ?)", filter.EndDate, filter.EndDate+" 23:59:59")
 	}
 
 	if err := query.Count(&total).Error; err != nil {
