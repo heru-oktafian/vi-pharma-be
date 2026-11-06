@@ -141,3 +141,13 @@ func GeneratePrescriptionCompoundItemID() string {
 	return generateIDWithPrefix("RXC")
 }
 
+// GeneratePurchaseReturnID generates a 15-character unique identifier for purchase returns (prefix "PRT")
+func GeneratePurchaseReturnID() string {
+	return generateIDWithPrefix("PRT")
+}
+
+// GeneratePurchaseReturnItemID generates a 15-character unique identifier for purchase return items (prefix "PRI")
+func GeneratePurchaseReturnItemID() string {
+	return generateIDWithPrefix("PRI")
+}
+

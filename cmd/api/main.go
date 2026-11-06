@@ -51,6 +51,7 @@ func main() {
 	medicineRepo := postgres.NewMedicineRepository(db)
 	inventoryRepo := postgres.NewInventoryRepository(db)
 	procurementRepo := postgres.NewProcurementRepository(db)
+	purchaseReturnRepo := postgres.NewPurchaseReturnRepository(db)
 	posRepo := postgres.NewPOSRepository(db)
 	prescriptionRepo := postgres.NewPrescriptionRepository(db)
 	reportRepo := postgres.NewReportRepository(db)
@@ -71,6 +72,7 @@ func main() {
 	medicineUsecase := usecase.NewMedicineUsecase(medicineRepo, categoryRepo, unitRepo)
 	inventoryUsecase := usecase.NewInventoryUsecase(inventoryRepo, medicineRepo)
 	procurementUsecase := usecase.NewProcurementUsecase(procurementRepo, supplierRepo, medicineRepo, unitRepo)
+	purchaseReturnUsecase := usecase.NewPurchaseReturnUsecase(purchaseReturnRepo, supplierRepo, medicineRepo, unitRepo, inventoryRepo)
 	posUsecase := usecase.NewPOSUsecase(posRepo, db)
 	prescriptionUsecase := usecase.NewPrescriptionUsecase(prescriptionRepo, medicineRepo, db)
 	reportUsecase := usecase.NewReportUsecase(reportRepo)
@@ -88,6 +90,7 @@ func main() {
 	medicineHandler := handler.NewMedicineHandler(medicineUsecase)
 	inventoryHandler := handler.NewInventoryHandler(inventoryUsecase)
 	procurementHandler := handler.NewProcurementHandler(procurementUsecase)
+	purchaseReturnHandler := handler.NewPurchaseReturnHandler(purchaseReturnUsecase)
 	posHandler := handler.NewPOSHandler(posUsecase)
 	prescriptionHandler := handler.NewPrescriptionHandler(prescriptionUsecase)
 	reportHandler := handler.NewReportHandler(reportUsecase)
@@ -130,6 +133,7 @@ func main() {
 		medicineHandler,
 		inventoryHandler,
 		procurementHandler,
+		purchaseReturnHandler,
 		posHandler,
 		prescriptionHandler,
 		reportHandler,

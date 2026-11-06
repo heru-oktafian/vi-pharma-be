@@ -26,6 +26,7 @@ func SetupRoutes(
 	medicineHandler *handler.MedicineHandler,
 	inventoryHandler *handler.InventoryHandler,
 	procurementHandler *handler.ProcurementHandler,
+	purchaseReturnHandler *handler.PurchaseReturnHandler,
 	posHandler *handler.POSHandler,
 	prescriptionHandler *handler.PrescriptionHandler,
 	reportHandler *handler.ReportHandler,
@@ -215,6 +216,14 @@ func SetupRoutes(
 	proc.Put("/orders/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist, domain.RoleInventory), procurementHandler.UpdatePurchaseOrder)
 	proc.Patch("/orders/:id/status", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist, domain.RoleInventory), procurementHandler.UpdatePOStatus)
 	proc.Delete("/orders/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), procurementHandler.DeletePurchaseOrder)
+
+	// Purchase Returns (Retur Pembelian ke PBF)
+	proc.Post("/returns", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist, domain.RoleInventory), purchaseReturnHandler.CreatePurchaseReturn)
+	proc.Get("/returns", purchaseReturnHandler.ListPurchaseReturns)
+	proc.Get("/returns/:id", purchaseReturnHandler.GetPurchaseReturnByID)
+	proc.Put("/returns/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist, domain.RoleInventory), purchaseReturnHandler.UpdatePurchaseReturn)
+	proc.Patch("/returns/:id/status", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist, domain.RoleInventory), purchaseReturnHandler.UpdateReturnStatus)
+	proc.Delete("/returns/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), purchaseReturnHandler.DeletePurchaseReturn)
 
 	// -------------------------------------------------------------
 	// 9. Point of Sale & Cashier (Kasir & Penjualan POS)
