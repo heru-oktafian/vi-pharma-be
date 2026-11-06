@@ -249,10 +249,10 @@ func SetupRoutes(
 	// -------------------------------------------------------------
 	rx := v1.Group("/prescriptions")
 	rx.Use(jwtAuth)
-	rx.Post("", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), prescriptionHandler.CreatePrescription)
+	rx.Post("", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist, domain.RoleCashier), prescriptionHandler.CreatePrescription)
 	rx.Get("", prescriptionHandler.ListPrescriptions)
 	rx.Get("/:id", prescriptionHandler.GetPrescriptionDetail)
-	rx.Put("/:id/status", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), prescriptionHandler.UpdateStatus)
+	rx.Put("/:id/status", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist, domain.RoleCashier), prescriptionHandler.UpdateStatus)
 	rx.Post("/:id/dispense", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), prescriptionHandler.DispensePrescription)
 
 	// -------------------------------------------------------------

@@ -251,6 +251,12 @@ func (u *prescriptionUsecase) UpdateStatus(ctx context.Context, id string, req *
 	if req.Status != "" {
 		prescription.Status = req.Status
 	}
+	if req.IsPaid != nil {
+		prescription.IsPaid = *req.IsPaid
+	}
+	if req.SaleID != nil {
+		prescription.SaleID = req.SaleID
+	}
 	if req.PharmacistID != nil {
 		prescription.PharmacistID = req.PharmacistID
 	}

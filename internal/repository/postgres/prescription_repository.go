@@ -34,32 +34,8 @@ func (r *prescriptionRepository) GetNextPrescriptionNumber(ctx context.Context, 
 }
 
 func (r *prescriptionRepository) Create(ctx context.Context, prescription *domain.Prescription) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 1. Insert Prescription
-		if err := tx.Create(prescription).Error; err != nil {
-			return err
-		}
-
-		// 2. Insert Items & Compound Items
-		for i := range prescription.Items {
-			item := &prescription.Items[i]
-			item.PrescriptionID = prescription.ID
-			if err := tx.Create(item).Error; err != nil {
-				return err
-			}
-
-			// If it has compound items
-			for j := range item.CompoundItems {
-				comp := &item.CompoundItems[j]
-				comp.PrescriptionItemID = item.ID
-				if err := tx.Create(comp).Error; err != nil {
-					return err
-				}
-			}
-		}
-
-		return nil
-	})
+	// GORM automatically inserts prescription header, items, and nested compound items in a single transaction
+	return r.db.WithContext(ctx).Create(prescription).Error
 }
 
 func (r *prescriptionRepository) FindByID(ctx context.Context, id string) (*domain.Prescription, error) {

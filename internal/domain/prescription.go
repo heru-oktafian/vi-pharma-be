@@ -194,14 +194,16 @@ type CreatePrescriptionRequest struct {
 }
 
 type UpdatePrescriptionStatusRequest struct {
-	Status         PrescriptionStatus `json:"status" validate:"required"`
-	ScreeningAdmin *bool              `json:"screening_admin"`
-	ScreeningPharma *bool             `json:"screening_pharma"`
-	ScreeningClinical *bool           `json:"screening_clinical"`
-	ScreeningPassed *bool             `json:"screening_passed"`
-	ScreeningNotes *string            `json:"screening_notes"`
-	PharmacistID   *string            `json:"pharmacist_id"`
-	Notes          *string            `json:"notes"`
+	Status            PrescriptionStatus `json:"status"`
+	IsPaid            *bool              `json:"is_paid"`
+	SaleID            *string            `json:"sale_id"`
+	ScreeningAdmin    *bool              `json:"screening_admin"`
+	ScreeningPharma   *bool              `json:"screening_pharma"`
+	ScreeningClinical *bool              `json:"screening_clinical"`
+	ScreeningPassed   *bool              `json:"screening_passed"`
+	ScreeningNotes    *string            `json:"screening_notes"`
+	PharmacistID      *string            `json:"pharmacist_id"`
+	Notes             *string            `json:"notes"`
 }
 
 type PrescriptionFilter struct {
