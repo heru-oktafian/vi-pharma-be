@@ -134,6 +134,7 @@ func (u *medicineUsecase) CreateMedicine(ctx context.Context, req *domain.Create
 		MinStock:             req.MinStock,
 		MaxStock:             req.MaxStock,
 		StorageLocation:      req.StorageLocation,
+		Indication:           req.Indication,
 		DefaultSupplierID:    req.DefaultSupplierID,
 		IsActive:             isActive,
 		LabelType:            labelType,
@@ -230,6 +231,7 @@ func (u *medicineUsecase) UpdateMedicine(ctx context.Context, id string, req *do
 	medicine.MinStock = req.MinStock
 	medicine.MaxStock = req.MaxStock
 	medicine.StorageLocation = req.StorageLocation
+	medicine.Indication = req.Indication
 	medicine.DefaultSupplierID = req.DefaultSupplierID
 	if req.IsActive != nil {
 		medicine.IsActive = *req.IsActive

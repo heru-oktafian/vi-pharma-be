@@ -266,6 +266,9 @@ type StockSummaryResponse struct {
 	ItemCode       string           `json:"item_code"`
 	Barcode        string           `json:"barcode"`
 	Name           string           `json:"name"`
+	GenericName    string           `json:"generic_name"`
+	Indication     string           `json:"indication"`
+	CategoryID     string           `json:"category_id"`
 	BaseUnitID     string           `json:"base_unit_id"`
 	BaseUnitName   string           `json:"base_unit_name"`
 	SellPrice      float64          `json:"sell_price"`

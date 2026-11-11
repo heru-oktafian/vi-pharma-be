@@ -110,7 +110,7 @@ func (r *inventoryRepository) GetStockSummaryByBranch(ctx context.Context, branc
 
 	if search != "" {
 		s := "%" + search + "%"
-		query = query.Where("name ILIKE ? OR item_code ILIKE ? OR barcode ILIKE ?", s, s, s)
+		query = query.Where("name ILIKE ? OR item_code ILIKE ? OR barcode ILIKE ? OR generic_name ILIKE ? OR indication ILIKE ?", s, s, s, s, s)
 	}
 
 	if err := query.Order("name ASC").Find(&medicines).Error; err != nil {
@@ -156,6 +156,9 @@ func (r *inventoryRepository) GetStockSummaryByBranch(ctx context.Context, branc
 			ItemCode:       med.ItemCode,
 			Barcode:        med.Barcode,
 			Name:           med.Name,
+			GenericName:    med.GenericName,
+			Indication:     med.Indication,
+			CategoryID:     med.CategoryID,
 			BaseUnitID:     med.BaseUnitID,
 			BaseUnitName:   baseUnitName,
 			SellPrice:      sellPrice,

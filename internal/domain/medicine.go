@@ -58,6 +58,7 @@ type Medicine struct {
 	MinStock             int                `gorm:"not null;default:10" json:"min_stock"`
 	MaxStock             int                `gorm:"not null;default:1000" json:"max_stock"`
 	StorageLocation      string             `gorm:"type:varchar(100)" json:"storage_location"`
+	Indication           string             `gorm:"type:text" json:"indication"`
 	DefaultSupplierID    *string            `gorm:"type:varchar(15)" json:"default_supplier_id"`
 	DefaultSupplier      *Supplier          `gorm:"foreignKey:DefaultSupplierID" json:"default_supplier,omitempty"`
 	IsActive             bool               `gorm:"not null;default:true;index" json:"is_active"`
@@ -133,6 +134,7 @@ type CreateMedicineRequest struct {
 	MinStock             int                  `json:"min_stock" validate:"gte=0"`
 	MaxStock             int                  `json:"max_stock" validate:"gte=0"`
 	StorageLocation      string               `json:"storage_location"`
+	Indication           string               `json:"indication"`
 	DefaultSupplierID    *string              `json:"default_supplier_id"`
 	IsActive             *bool                `json:"is_active"`
 	LabelType            string               `json:"label_type"`
@@ -163,6 +165,7 @@ type UpdateMedicineRequest struct {
 	MinStock             int                  `json:"min_stock" validate:"gte=0"`
 	MaxStock             int                  `json:"max_stock" validate:"gte=0"`
 	StorageLocation      string               `json:"storage_location"`
+	Indication           string               `json:"indication"`
 	DefaultSupplierID    *string              `json:"default_supplier_id"`
 	IsActive             *bool                `json:"is_active"`
 	LabelType            string               `json:"label_type"`
@@ -205,6 +208,7 @@ type MedicineResponse struct {
 	MinStock             int                `json:"min_stock"`
 	MaxStock             int                `json:"max_stock"`
 	StorageLocation      string             `json:"storage_location"`
+	Indication           string             `json:"indication"`
 	DefaultSupplierID    *string            `json:"default_supplier_id,omitempty"`
 	DefaultSupplierName  string             `json:"default_supplier_name,omitempty"`
 	IsActive             bool               `json:"is_active"`
@@ -251,6 +255,7 @@ func (m *Medicine) ToResponse() *MedicineResponse {
 		MinStock:             m.MinStock,
 		MaxStock:             m.MaxStock,
 		StorageLocation:      m.StorageLocation,
+		Indication:           m.Indication,
 		DefaultSupplierID:    m.DefaultSupplierID,
 		IsActive:             m.IsActive,
 		LabelType:            m.LabelType,

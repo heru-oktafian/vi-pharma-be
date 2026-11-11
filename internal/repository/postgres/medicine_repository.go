@@ -39,8 +39,8 @@ func (r *medicineRepository) FindAll(ctx context.Context, filter domain.Medicine
 
 	if filter.Search != "" {
 		pattern := "%" + filter.Search + "%"
-		query = query.Where("medicines.name ILIKE ? OR medicines.generic_name ILIKE ? OR medicines.item_code ILIKE ? OR medicines.barcode ILIKE ? OR medicines.nie ILIKE ?",
-			pattern, pattern, pattern, pattern, pattern)
+		query = query.Where("medicines.name ILIKE ? OR medicines.generic_name ILIKE ? OR medicines.item_code ILIKE ? OR medicines.barcode ILIKE ? OR medicines.nie ILIKE ? OR medicines.indication ILIKE ?",
+			pattern, pattern, pattern, pattern, pattern, pattern)
 	}
 
 	if err := query.Count(&totalItems).Error; err != nil {
