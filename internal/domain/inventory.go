@@ -52,8 +52,18 @@ type OpnameStatus string
 
 const (
 	OpnameDraft     OpnameStatus = "DRAFT"
+	OpnameOpen      OpnameStatus = "OPEN" // Sesi Induk Opname aktif bergulir (bisa multi-day)
 	OpnameCompleted OpnameStatus = "COMPLETED"
 	OpnameCancelled OpnameStatus = "CANCELLED"
+)
+
+// OpnameRackStatus represents review status for a submitted rack
+type OpnameRackStatus string
+
+const (
+	RackPending  OpnameRackStatus = "PENDING"
+	RackApproved OpnameRackStatus = "APPROVED"
+	RackRejected OpnameRackStatus = "REJECTED"
 )
 
 // MedicineBatch represents stock of a medicine segmented by Batch Number and Expired Date
@@ -159,35 +169,58 @@ type PurchaseInvoiceItem struct {
 	PutToShelfDirectly bool           `gorm:"default:false" json:"put_to_shelf_directly"`
 }
 
-// StockOpname represents rolling cycle counting session
+// StockOpname represents rolling cycle counting session (can act as a multi-day parent session)
 type StockOpname struct {
 	ID          string            `gorm:"type:varchar(15);primaryKey" json:"id"`
 	BranchID    string            `gorm:"type:varchar(15);not null;index" json:"branch_id"`
+	Branch      *Branch           `gorm:"foreignKey:BranchID" json:"branch,omitempty"`
 	OpnameCode  string            `gorm:"type:varchar(50);not null;uniqueIndex" json:"opname_code"`
 	OpnameDate  time.Time         `gorm:"type:date;not null" json:"opname_date"`
 	Location    StockLocation     `gorm:"type:varchar(20);not null" json:"location"` // GUDANG atau RAK
-	RackName    string            `gorm:"type:varchar(100)" json:"rack_name"`        // Misal: "Rak 01 - Obat Batuk"
+	RackName    string            `gorm:"type:varchar(100)" json:"rack_name"`        // Misal: "Rak 01 - Obat Batuk" atau "Sesi Induk Opname"
 	Status      OpnameStatus      `gorm:"type:varchar(20);not null;default:'DRAFT'" json:"status"`
 	Notes       string            `gorm:"type:text" json:"notes"`
 	CreatedByID string            `gorm:"type:varchar(15);not null" json:"created_by_id"`
 	CreatedBy   *User             `gorm:"foreignKey:CreatedByID" json:"created_by,omitempty"`
 	Items       []StockOpnameItem `gorm:"foreignKey:StockOpnameID" json:"items,omitempty"`
+	Racks       []StockOpnameRack `gorm:"foreignKey:StockOpnameID" json:"racks,omitempty"`
 	CreatedAt   time.Time         `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt   time.Time         `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
+// StockOpnameRack represents a submitted batch of items counted on a specific rack
+type StockOpnameRack struct {
+	ID            string            `gorm:"type:varchar(15);primaryKey" json:"id"`
+	StockOpnameID string            `gorm:"type:varchar(15);not null;index" json:"stock_opname_id"`
+	RackName      string            `gorm:"type:varchar(100);not null" json:"rack_name"`
+	Location      StockLocation     `gorm:"type:varchar(20);not null;default:'RAK'" json:"location"` // RAK atau GUDANG
+	Status        OpnameRackStatus  `gorm:"type:varchar(20);not null;default:'PENDING'" json:"status"` // PENDING, APPROVED, REJECTED
+	CountedByID   string            `gorm:"type:varchar(15);not null" json:"counted_by_id"`
+	CountedBy     *User             `gorm:"foreignKey:CountedByID" json:"counted_by,omitempty"`
+	ApprovedByID  *string           `gorm:"type:varchar(15)" json:"approved_by_id,omitempty"`
+	ApprovedBy    *User             `gorm:"foreignKey:ApprovedByID" json:"approved_by,omitempty"`
+	Notes         string            `gorm:"type:text" json:"notes"`
+	Items         []StockOpnameItem `gorm:"foreignKey:StockOpnameRackID" json:"items,omitempty"`
+	CreatedAt     time.Time         `gorm:"autoCreateTime" json:"created_at"`
+	ApprovedAt    *time.Time        `json:"approved_at,omitempty"`
+}
+
 // StockOpnameItem represents counting per batch in a cycle count session
 type StockOpnameItem struct {
-	ID            string         `gorm:"type:varchar(15);primaryKey" json:"id"`
-	StockOpnameID string         `gorm:"type:varchar(15);not null;index" json:"stock_opname_id"`
-	MedicineID    string         `gorm:"type:varchar(15);not null;index" json:"medicine_id"`
-	Medicine      *Medicine      `gorm:"foreignKey:MedicineID" json:"medicine,omitempty"`
-	BatchID       string         `gorm:"type:varchar(15);not null" json:"batch_id"`
-	Batch         *MedicineBatch `gorm:"foreignKey:BatchID" json:"batch,omitempty"`
-	SystemQty     float64        `gorm:"type:decimal(12,2);not null" json:"system_qty"`
-	PhysicalQty   float64        `gorm:"type:decimal(12,2);not null" json:"physical_qty"`
-	DifferenceQty float64        `gorm:"type:decimal(12,2);not null" json:"difference_qty"` // PhysicalQty - SystemQty
-	Notes         string         `gorm:"type:text" json:"notes"`
+	ID                string          `gorm:"type:varchar(15);primaryKey" json:"id"`
+	StockOpnameID     string          `gorm:"type:varchar(15);not null;index" json:"stock_opname_id"`
+	StockOpnameRackID *string         `gorm:"type:varchar(15);index" json:"stock_opname_rack_id,omitempty"`
+	RackName          string          `gorm:"type:varchar(100)" json:"rack_name,omitempty"`
+	MedicineID        string          `gorm:"type:varchar(15);not null;index" json:"medicine_id"`
+	Medicine          *Medicine       `gorm:"foreignKey:MedicineID" json:"medicine,omitempty"`
+	BatchID           string          `gorm:"type:varchar(15);not null" json:"batch_id"`
+	Batch             *MedicineBatch  `gorm:"foreignKey:BatchID" json:"batch,omitempty"`
+	SystemQty         float64         `gorm:"type:decimal(12,2);not null" json:"system_qty"`
+	PhysicalQty       float64         `gorm:"type:decimal(12,2);not null" json:"physical_qty"`
+	DifferenceQty     float64         `gorm:"type:decimal(12,2);not null" json:"difference_qty"` // PhysicalQty - SystemQty
+	Notes             string          `gorm:"type:text" json:"notes"`
+	CountedByID       *string         `gorm:"type:varchar(15)" json:"counted_by_id,omitempty"`
+	CountedBy         *User           `gorm:"foreignKey:CountedByID" json:"counted_by,omitempty"`
 }
 
 // -----------------------------------------------------------------------
@@ -258,6 +291,33 @@ type OpnameItemInput struct {
 
 type SubmitOpnameRequest struct {
 	Items []OpnameItemInput `json:"items" validate:"required,min=1"`
+}
+
+type CreateParentOpnameRequest struct {
+	Notes    string        `json:"notes"`
+	Location StockLocation `json:"location"` // GUDANG atau RAK (default: RAK)
+}
+
+type SubmitRackCountRequest struct {
+	RackName string            `json:"rack_name" validate:"required"`
+	Location StockLocation     `json:"location" validate:"required"` // RAK atau GUDANG
+	Notes    string            `json:"notes"`
+	Items    []OpnameItemInput `json:"items" validate:"required,min=1"`
+}
+
+type RejectRackRequest struct {
+	Notes string `json:"notes"`
+}
+
+type ParentOpnameSummaryResponse struct {
+	Opname            *StockOpname      `json:"opname"`
+	TotalRacks        int               `json:"total_racks"`
+	PendingRacks      int               `json:"pending_racks"`
+	ApprovedRacks     int               `json:"approved_racks"`
+	RejectedRacks     int               `json:"rejected_racks"`
+	TotalItemsCounted int               `json:"total_items_counted"`
+	DiscrepancyCount  int               `json:"discrepancy_count"`
+	Racks             []StockOpnameRack `json:"racks"`
 }
 
 // Responses
@@ -371,6 +431,11 @@ type InventoryRepository interface {
 	UpdateOpname(ctx context.Context, opname *StockOpname) error
 	ListOpnames(ctx context.Context, branchID string, page, limit int) ([]*StockOpname, int64, error)
 	AddOpnameItem(ctx context.Context, item *StockOpnameItem) error
+	GetActiveParentOpname(ctx context.Context, branchID string) (*StockOpname, error)
+	CreateOpnameRack(ctx context.Context, rack *StockOpnameRack) error
+	GetOpnameRackByID(ctx context.Context, rackID string) (*StockOpnameRack, error)
+	UpdateOpnameRack(ctx context.Context, rack *StockOpnameRack) error
+	ListOpnameRacks(ctx context.Context, opnameID string) ([]StockOpnameRack, error)
 }
 
 type InventoryUsecase interface {
@@ -397,4 +462,13 @@ type InventoryUsecase interface {
 	SubmitOpnameSession(ctx context.Context, branchID, userID, opnameID string, req *SubmitOpnameRequest) (*StockOpname, error)
 	ListOpnames(ctx context.Context, branchID string, page, limit int) ([]*StockOpname, int64, error)
 	GetOpnameDetail(ctx context.Context, opnameID string) (*StockOpname, error)
+
+	// Collaborative Multi-User Opname
+	GetActiveParentOpname(ctx context.Context, branchID string) (*ParentOpnameSummaryResponse, error)
+	CreateParentOpnameSession(ctx context.Context, branchID, userID string, req *CreateParentOpnameRequest) (*StockOpname, error)
+	SubmitRackCount(ctx context.Context, branchID, userID, opnameID string, req *SubmitRackCountRequest) (*StockOpnameRack, error)
+	GetOpnameRackDetail(ctx context.Context, rackID string) (*StockOpnameRack, error)
+	ApproveRackCount(ctx context.Context, branchID, userID, opnameID, rackID string) (*StockOpnameRack, error)
+	RejectRackCount(ctx context.Context, branchID, userID, opnameID, rackID string, notes string) (*StockOpnameRack, error)
+	CloseParentOpnameSession(ctx context.Context, branchID, userID, opnameID string) (*StockOpname, error)
 }

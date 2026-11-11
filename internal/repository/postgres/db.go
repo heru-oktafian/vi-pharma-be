@@ -100,6 +100,7 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 		&domain.PurchaseInvoiceItem{},
 		&domain.PurchaseInvoicePayment{},
 		&domain.StockOpname{},
+		&domain.StockOpnameRack{},
 		&domain.StockOpnameItem{},
 		&domain.PurchaseOrder{},
 		&domain.PurchaseOrderItem{},
@@ -120,6 +121,9 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 	_ = db.Exec("ALTER TABLE branches ADD COLUMN IF NOT EXISTS daily_margin_target numeric(15,2) DEFAULT 250000").Error
 	_ = db.Exec("ALTER TABLE branches ADD COLUMN IF NOT EXISTS daily_bonus_reward numeric(15,2) DEFAULT 50000").Error
 	_ = db.Exec("ALTER TABLE purchase_invoices ADD COLUMN IF NOT EXISTS paid_amount numeric(14,2) DEFAULT 0").Error
+	_ = db.Exec("ALTER TABLE stock_opname_items ADD COLUMN IF NOT EXISTS stock_opname_rack_id varchar(15)").Error
+	_ = db.Exec("ALTER TABLE stock_opname_items ADD COLUMN IF NOT EXISTS rack_name varchar(100)").Error
+	_ = db.Exec("ALTER TABLE stock_opname_items ADD COLUMN IF NOT EXISTS counted_by_id varchar(15)").Error
 
 	// Step 3: Seed initial data (Admin & Default Branches)
 	seedInitialData(db)

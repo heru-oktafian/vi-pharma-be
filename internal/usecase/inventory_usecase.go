@@ -916,3 +916,353 @@ func (u *inventoryUsecase) ListOpnames(ctx context.Context, branchID string, pag
 func (u *inventoryUsecase) GetOpnameDetail(ctx context.Context, opnameID string) (*domain.StockOpname, error) {
 	return u.invRepo.GetOpnameByID(ctx, opnameID)
 }
+
+// -------------------------------------------------------------
+// Collaborative Multi-User Opname (Sistem Setor per Rak)
+// -------------------------------------------------------------
+
+func (u *inventoryUsecase) GetActiveParentOpname(ctx context.Context, branchID string) (*domain.ParentOpnameSummaryResponse, error) {
+	opname, err := u.invRepo.GetActiveParentOpname(ctx, branchID)
+	if err != nil {
+		return nil, err
+	}
+	if opname == nil {
+		return nil, nil
+	}
+
+	var pendingCount, approvedCount, rejectedCount, totalItems, discrepancyCount int
+	for _, rack := range opname.Racks {
+		switch rack.Status {
+		case domain.RackPending:
+			pendingCount++
+		case domain.RackApproved:
+			approvedCount++
+		case domain.RackRejected:
+			rejectedCount++
+		}
+		totalItems += len(rack.Items)
+		for _, item := range rack.Items {
+			if item.DifferenceQty != 0 {
+				discrepancyCount++
+			}
+		}
+	}
+
+	return &domain.ParentOpnameSummaryResponse{
+		Opname:            opname,
+		TotalRacks:        len(opname.Racks),
+		PendingRacks:      pendingCount,
+		ApprovedRacks:     approvedCount,
+		RejectedRacks:     rejectedCount,
+		TotalItemsCounted: totalItems,
+		DiscrepancyCount:  discrepancyCount,
+		Racks:             opname.Racks,
+	}, nil
+}
+
+func (u *inventoryUsecase) CreateParentOpnameSession(
+	ctx context.Context,
+	branchID, userID string,
+	req *domain.CreateParentOpnameRequest,
+) (*domain.StockOpname, error) {
+	// Verify no active parent session already exists for this branch
+	active, err := u.invRepo.GetActiveParentOpname(ctx, branchID)
+	if err == nil && active != nil {
+		return nil, fmt.Errorf("masih terdapat Sesi Induk Opname yang aktif (%s). Silakan selesaikan sesi tersebut sebelum membuat sesi baru", active.OpnameCode)
+	}
+
+	opnameID := utils.GenerateStockOpnameID()
+	opnameCode := fmt.Sprintf("SOP-%s-%04d", time.Now().Format("20060102"), rand.Intn(10000))
+
+	loc := req.Location
+	if loc == "" {
+		loc = domain.LocationShelf
+	}
+
+	notes := req.Notes
+	if notes == "" {
+		notes = "Sesi Induk Stok Opname Kolaboratif Multi-User"
+	}
+
+	opname := &domain.StockOpname{
+		ID:          opnameID,
+		BranchID:    branchID,
+		OpnameCode:  opnameCode,
+		OpnameDate:  time.Now(),
+		Location:    loc,
+		RackName:    "Sesi Induk Opname",
+		Status:      domain.OpnameOpen,
+		Notes:       notes,
+		CreatedByID: userID,
+	}
+
+	if err := u.invRepo.CreateOpname(ctx, opname); err != nil {
+		return nil, fmt.Errorf("gagal membuat sesi induk opname: %w", err)
+	}
+
+	return u.invRepo.GetOpnameByID(ctx, opnameID)
+}
+
+func (u *inventoryUsecase) SubmitRackCount(
+	ctx context.Context,
+	branchID, userID, opnameID string,
+	req *domain.SubmitRackCountRequest,
+) (*domain.StockOpnameRack, error) {
+	opname, err := u.invRepo.GetOpnameByID(ctx, opnameID)
+	if err != nil {
+		return nil, err
+	}
+	if opname.BranchID != branchID {
+		return nil, domain.ErrOpnameNotFound
+	}
+	if opname.Status != domain.OpnameOpen {
+		return nil, fmt.Errorf("sesi induk opname ini sudah tidak aktif (status: %s)", opname.Status)
+	}
+	if req.RackName == "" {
+		return nil, fmt.Errorf("nama rak wajib diisi")
+	}
+	if len(req.Items) == 0 {
+		return nil, fmt.Errorf("minimal 1 item obat wajib dimasukkan dalam hitungan rak")
+	}
+
+	rackID := utils.GenerateStockOpnameRackID()
+	loc := req.Location
+	if loc == "" {
+		loc = opname.Location
+	}
+
+	rack := &domain.StockOpnameRack{
+		ID:            rackID,
+		StockOpnameID: opnameID,
+		RackName:      req.RackName,
+		Location:      loc,
+		Status:        domain.RackPending,
+		CountedByID:   userID,
+		Notes:         req.Notes,
+	}
+
+	if err := u.invRepo.CreateOpnameRack(ctx, rack); err != nil {
+		return nil, fmt.Errorf("gagal membuat data rak opname: %w", err)
+	}
+
+	// Save all counted items in this rack
+	for _, it := range req.Items {
+		var batch *domain.MedicineBatch
+		if it.BatchID != "" {
+			batch, _ = u.invRepo.FindBatchByID(ctx, it.BatchID)
+		}
+		if batch == nil {
+			batchNo := it.BatchNumber
+			if batchNo == "" {
+				batchNo = "OPN-" + time.Now().Format("20060102")
+			}
+			expDate := time.Now().AddDate(1, 0, 0)
+			if it.ExpiredDate != "" {
+				if d, e := time.Parse("2006-01-02", it.ExpiredDate); e == nil {
+					expDate = d
+				}
+			}
+			existing, _ := u.invRepo.FindBatchByNumberAndMedicine(ctx, branchID, it.MedicineID, batchNo)
+			if existing != nil {
+				batch = existing
+			} else {
+				batch = &domain.MedicineBatch{
+					ID:          utils.GenerateBatchID(),
+					MedicineID:  it.MedicineID,
+					BranchID:    branchID,
+					BatchNumber: batchNo,
+					ExpiredDate: expDate,
+					IsActive:    true,
+				}
+				_ = u.invRepo.CreateBatch(ctx, batch)
+			}
+			it.BatchID = batch.ID
+		}
+
+		var sysQty float64
+		if loc == domain.LocationWarehouse {
+			sysQty = batch.QtyWarehouse
+		} else {
+			sysQty = batch.QtyShelf
+		}
+
+		diff := it.PhysicalQty - sysQty
+
+		opItem := &domain.StockOpnameItem{
+			ID:                utils.GenerateStockOpnameItemID(),
+			StockOpnameID:     opnameID,
+			StockOpnameRackID: &rackID,
+			RackName:          req.RackName,
+			MedicineID:        it.MedicineID,
+			BatchID:           it.BatchID,
+			SystemQty:         sysQty,
+			PhysicalQty:       it.PhysicalQty,
+			DifferenceQty:     diff,
+			Notes:             it.Notes,
+			CountedByID:       &userID,
+		}
+		_ = u.invRepo.AddOpnameItem(ctx, opItem)
+	}
+
+	return u.invRepo.GetOpnameRackByID(ctx, rackID)
+}
+
+func (u *inventoryUsecase) GetOpnameRackDetail(ctx context.Context, rackID string) (*domain.StockOpnameRack, error) {
+	return u.invRepo.GetOpnameRackByID(ctx, rackID)
+}
+
+func (u *inventoryUsecase) ApproveRackCount(
+	ctx context.Context,
+	branchID, userID, opnameID, rackID string,
+) (*domain.StockOpnameRack, error) {
+	opname, err := u.invRepo.GetOpnameByID(ctx, opnameID)
+	if err != nil {
+		return nil, err
+	}
+	if opname.BranchID != branchID {
+		return nil, domain.ErrOpnameNotFound
+	}
+
+	rack, err := u.invRepo.GetOpnameRackByID(ctx, rackID)
+	if err != nil {
+		return nil, err
+	}
+	if rack.StockOpnameID != opnameID {
+		return nil, fmt.Errorf("rak tidak terikat pada sesi opname ini")
+	}
+	if rack.Status == domain.RackApproved {
+		return nil, domain.ErrOpnameRackAlreadyProcessed
+	}
+
+	// Adjust actual stock for all items counted in this approved rack
+	for _, it := range rack.Items {
+		batch, err := u.invRepo.FindBatchByID(ctx, it.BatchID)
+		if err != nil || batch == nil {
+			continue
+		}
+
+		var sysBefore float64
+		if rack.Location == domain.LocationWarehouse {
+			sysBefore = batch.QtyWarehouse
+			batch.QtyWarehouse = it.PhysicalQty
+		} else {
+			sysBefore = batch.QtyShelf
+			batch.QtyShelf = it.PhysicalQty
+		}
+		batch.CalculateTotal()
+
+		if err := u.invRepo.UpdateBatch(ctx, batch); err != nil {
+			return nil, fmt.Errorf("gagal memperbarui stok batch: %w", err)
+		}
+
+		// Calculate discrepancy
+		diff := it.PhysicalQty - sysBefore
+		if diff != 0 {
+			var qtyIn, qtyOut float64
+			if diff > 0 {
+				qtyIn = diff
+			} else {
+				qtyOut = -diff
+			}
+
+			balAfter := batch.QtyWarehouse
+			if rack.Location == domain.LocationShelf {
+				balAfter = batch.QtyShelf
+			}
+
+			mutation := &domain.StockMutation{
+				ID:           utils.GenerateStockMutationID(),
+				BranchID:     branchID,
+				MedicineID:   it.MedicineID,
+				BatchID:      it.BatchID,
+				MutationType: domain.MutationAdjustment,
+				Location:     rack.Location,
+				ReferenceNo:  fmt.Sprintf("%s / %s", opname.OpnameCode, rack.RackName),
+				QtyIn:        qtyIn,
+				QtyOut:       qtyOut,
+				BalanceAfter: balAfter,
+				TotalAfter:   batch.TotalStock,
+				Notes:        fmt.Sprintf("ACC Opname Fisik Rak '%s' (%s). %s", rack.RackName, rack.Location, it.Notes),
+				UserID:       userID,
+			}
+			_ = u.invRepo.CreateMutation(ctx, mutation)
+		}
+	}
+
+	now := time.Now()
+	rack.Status = domain.RackApproved
+	rack.ApprovedByID = &userID
+	rack.ApprovedAt = &now
+
+	if err := u.invRepo.UpdateOpnameRack(ctx, rack); err != nil {
+		return nil, fmt.Errorf("gagal memperbarui status rak: %w", err)
+	}
+
+	return u.invRepo.GetOpnameRackByID(ctx, rackID)
+}
+
+func (u *inventoryUsecase) RejectRackCount(
+	ctx context.Context,
+	branchID, userID, opnameID, rackID string,
+	notes string,
+) (*domain.StockOpnameRack, error) {
+	opname, err := u.invRepo.GetOpnameByID(ctx, opnameID)
+	if err != nil {
+		return nil, err
+	}
+	if opname.BranchID != branchID {
+		return nil, domain.ErrOpnameNotFound
+	}
+
+	rack, err := u.invRepo.GetOpnameRackByID(ctx, rackID)
+	if err != nil {
+		return nil, err
+	}
+	if rack.StockOpnameID != opnameID {
+		return nil, fmt.Errorf("rak tidak terikat pada sesi opname ini")
+	}
+	if rack.Status == domain.RackApproved {
+		return nil, fmt.Errorf("rak yang sudah disetujui tidak dapat ditolak")
+	}
+
+	now := time.Now()
+	rack.Status = domain.RackRejected
+	rack.ApprovedByID = &userID
+	rack.ApprovedAt = &now
+	if notes != "" {
+		if rack.Notes != "" {
+			rack.Notes += " | Catatan Penolakan: " + notes
+		} else {
+			rack.Notes = "Catatan Penolakan: " + notes
+		}
+	}
+
+	if err := u.invRepo.UpdateOpnameRack(ctx, rack); err != nil {
+		return nil, fmt.Errorf("gagal menolak rak: %w", err)
+	}
+
+	return u.invRepo.GetOpnameRackByID(ctx, rackID)
+}
+
+func (u *inventoryUsecase) CloseParentOpnameSession(
+	ctx context.Context,
+	branchID, userID, opnameID string,
+) (*domain.StockOpname, error) {
+	opname, err := u.invRepo.GetOpnameByID(ctx, opnameID)
+	if err != nil {
+		return nil, err
+	}
+	if opname.BranchID != branchID {
+		return nil, domain.ErrOpnameNotFound
+	}
+	if opname.Status == domain.OpnameCompleted {
+		return opname, nil
+	}
+
+	opname.Status = domain.OpnameCompleted
+	if err := u.invRepo.UpdateOpname(ctx, opname); err != nil {
+		return nil, fmt.Errorf("gagal menutup sesi induk opname: %w", err)
+	}
+
+	return u.invRepo.GetOpnameByID(ctx, opnameID)
+}

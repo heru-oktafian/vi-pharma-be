@@ -472,6 +472,15 @@ func (r *inventoryRepository) GetOpnameByID(ctx context.Context, opnameID string
 	var opname domain.StockOpname
 	err := r.db.WithContext(ctx).
 		Preload("CreatedBy").
+		Preload("Branch").
+		Preload("Racks", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at DESC")
+		}).
+		Preload("Racks.CountedBy").
+		Preload("Racks.ApprovedBy").
+		Preload("Racks.Items.Medicine").
+		Preload("Racks.Items.Medicine.BaseUnit").
+		Preload("Racks.Items.Batch").
 		Preload("Items.Medicine").
 		Preload("Items.Medicine.BaseUnit").
 		Preload("Items.Batch").
@@ -514,4 +523,75 @@ func (r *inventoryRepository) ListOpnames(ctx context.Context, branchID string, 
 
 func (r *inventoryRepository) AddOpnameItem(ctx context.Context, item *domain.StockOpnameItem) error {
 	return r.db.WithContext(ctx).Create(item).Error
+}
+
+func (r *inventoryRepository) GetActiveParentOpname(ctx context.Context, branchID string) (*domain.StockOpname, error) {
+	var opname domain.StockOpname
+	err := r.db.WithContext(ctx).
+		Preload("CreatedBy").
+		Preload("Branch").
+		Preload("Racks", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at DESC")
+		}).
+		Preload("Racks.CountedBy").
+		Preload("Racks.ApprovedBy").
+		Preload("Racks.Items.Medicine").
+		Preload("Racks.Items.Medicine.BaseUnit").
+		Preload("Racks.Items.Batch").
+		Preload("Items.Medicine").
+		Preload("Items.Medicine.BaseUnit").
+		Preload("Items.Batch").
+		Where("branch_id = ? AND status = ?", branchID, domain.OpnameOpen).
+		Order("created_at DESC").
+		First(&opname).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil // No active parent session currently
+		}
+		return nil, err
+	}
+	return &opname, nil
+}
+
+func (r *inventoryRepository) CreateOpnameRack(ctx context.Context, rack *domain.StockOpnameRack) error {
+	return r.db.WithContext(ctx).Create(rack).Error
+}
+
+func (r *inventoryRepository) GetOpnameRackByID(ctx context.Context, rackID string) (*domain.StockOpnameRack, error) {
+	var rack domain.StockOpnameRack
+	err := r.db.WithContext(ctx).
+		Preload("CountedBy").
+		Preload("ApprovedBy").
+		Preload("Items.Medicine").
+		Preload("Items.Medicine.BaseUnit").
+		Preload("Items.Batch").
+		Where("id = ?", rackID).
+		First(&rack).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrOpnameRackNotFound
+		}
+		return nil, err
+	}
+	return &rack, nil
+}
+
+func (r *inventoryRepository) UpdateOpnameRack(ctx context.Context, rack *domain.StockOpnameRack) error {
+	return r.db.WithContext(ctx).Save(rack).Error
+}
+
+func (r *inventoryRepository) ListOpnameRacks(ctx context.Context, opnameID string) ([]domain.StockOpnameRack, error) {
+	var racks []domain.StockOpnameRack
+	err := r.db.WithContext(ctx).
+		Preload("CountedBy").
+		Preload("ApprovedBy").
+		Preload("Items.Medicine").
+		Preload("Items.Medicine.BaseUnit").
+		Preload("Items.Batch").
+		Where("stock_opname_id = ?", opnameID).
+		Order("created_at DESC").
+		Find(&racks).Error
+	return racks, err
 }

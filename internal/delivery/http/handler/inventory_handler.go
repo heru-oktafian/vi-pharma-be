@@ -525,3 +525,142 @@ func (h *InventoryHandler) GetOpnameDetail(c *fiber.Ctx) error {
 
 	return SuccessResponse(c, fiber.StatusOK, "Detail sesi opname berhasil diambil", opname)
 }
+
+// -------------------------------------------------------------
+// Collaborative Multi-User Opname Endpoints
+// -------------------------------------------------------------
+
+// GetActiveParentOpname handles GET /api/v1/inventory/opnames/parent/active
+func (h *InventoryHandler) GetActiveParentOpname(c *fiber.Ctx) error {
+	branchID := getBranchID(c)
+	if branchID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Branch ID wajib ditentukan", nil)
+	}
+
+	summary, err := h.invUsecase.GetActiveParentOpname(c.Context(), branchID)
+	if err != nil {
+		return ErrorResponse(c, fiber.StatusInternalServerError, "Gagal mengecek sesi induk opname", err)
+	}
+
+	return SuccessResponse(c, fiber.StatusOK, "Status sesi induk opname aktif", summary)
+}
+
+// CreateParentOpnameSession handles POST /api/v1/inventory/opnames/parent
+func (h *InventoryHandler) CreateParentOpnameSession(c *fiber.Ctx) error {
+	branchID := getBranchID(c)
+	if branchID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Branch ID wajib ditentukan", nil)
+	}
+	userID := getUserID(c)
+
+	var req domain.CreateParentOpnameRequest
+	if err := c.BodyParser(&req); err != nil {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Format payload tidak valid", err)
+	}
+
+	opname, err := h.invUsecase.CreateParentOpnameSession(c.Context(), branchID, userID, &req)
+	if err != nil {
+		return ErrorResponse(c, fiber.StatusBadRequest, err.Error(), err)
+	}
+
+	return SuccessResponse(c, fiber.StatusCreated, "Sesi induk stok opname berhasil dibuka", opname)
+}
+
+// SubmitRackCount handles POST /api/v1/inventory/opnames/parent/:id/submit-rack
+func (h *InventoryHandler) SubmitRackCount(c *fiber.Ctx) error {
+	branchID := getBranchID(c)
+	if branchID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Branch ID wajib ditentukan", nil)
+	}
+	userID := getUserID(c)
+	opnameID := c.Params("id")
+	if opnameID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "ID sesi induk opname wajib ditentukan", nil)
+	}
+
+	var req domain.SubmitRackCountRequest
+	if err := c.BodyParser(&req); err != nil {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Format payload rak tidak valid", err)
+	}
+
+	rack, err := h.invUsecase.SubmitRackCount(c.Context(), branchID, userID, opnameID, &req)
+	if err != nil {
+		return ErrorResponse(c, fiber.StatusBadRequest, err.Error(), err)
+	}
+
+	return SuccessResponse(c, fiber.StatusCreated, "Hitungan rak berhasil disetor untuk review apoteker", rack)
+}
+
+// GetOpnameRackDetail handles GET /api/v1/inventory/opnames/parent/:id/racks/:rack_id
+func (h *InventoryHandler) GetOpnameRackDetail(c *fiber.Ctx) error {
+	rackID := c.Params("rack_id")
+	if rackID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "ID rak wajib ditentukan", nil)
+	}
+
+	rack, err := h.invUsecase.GetOpnameRackDetail(c.Context(), rackID)
+	if err != nil {
+		if errors.Is(err, domain.ErrOpnameRackNotFound) {
+			return ErrorResponse(c, fiber.StatusNotFound, "Data rak opname tidak ditemukan", nil)
+		}
+		return ErrorResponse(c, fiber.StatusInternalServerError, "Gagal mengambil data rak", err)
+	}
+
+	return SuccessResponse(c, fiber.StatusOK, "Data rak berhasil diambil", rack)
+}
+
+// ApproveRackCount handles POST /api/v1/inventory/opnames/parent/:id/approve-rack/:rack_id
+func (h *InventoryHandler) ApproveRackCount(c *fiber.Ctx) error {
+	branchID := getBranchID(c)
+	if branchID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Branch ID wajib ditentukan", nil)
+	}
+	userID := getUserID(c)
+	opnameID := c.Params("id")
+	rackID := c.Params("rack_id")
+
+	rack, err := h.invUsecase.ApproveRackCount(c.Context(), branchID, userID, opnameID, rackID)
+	if err != nil {
+		return ErrorResponse(c, fiber.StatusBadRequest, err.Error(), err)
+	}
+
+	return SuccessResponse(c, fiber.StatusOK, "Rak berhasil di-ACC dan penyesuaian stok telah diterapkan", rack)
+}
+
+// RejectRackCount handles POST /api/v1/inventory/opnames/parent/:id/reject-rack/:rack_id
+func (h *InventoryHandler) RejectRackCount(c *fiber.Ctx) error {
+	branchID := getBranchID(c)
+	if branchID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Branch ID wajib ditentukan", nil)
+	}
+	userID := getUserID(c)
+	opnameID := c.Params("id")
+	rackID := c.Params("rack_id")
+
+	var req domain.RejectRackRequest
+	_ = c.BodyParser(&req)
+
+	rack, err := h.invUsecase.RejectRackCount(c.Context(), branchID, userID, opnameID, rackID, req.Notes)
+	if err != nil {
+		return ErrorResponse(c, fiber.StatusBadRequest, err.Error(), err)
+	}
+
+	return SuccessResponse(c, fiber.StatusOK, "Rak telah ditolak untuk dihitung ulang", rack)
+}
+
+// CloseParentOpnameSession handles POST /api/v1/inventory/opnames/parent/:id/close
+func (h *InventoryHandler) CloseParentOpnameSession(c *fiber.Ctx) error {
+	branchID := getBranchID(c)
+	if branchID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Branch ID wajib ditentukan", nil)
+	}
+	userID := getUserID(c)
+	opnameID := c.Params("id")
+
+	opname, err := h.invUsecase.CloseParentOpnameSession(c.Context(), branchID, userID, opnameID)
+	if err != nil {
+		return ErrorResponse(c, fiber.StatusBadRequest, err.Error(), err)
+	}
+
+	return SuccessResponse(c, fiber.StatusOK, "Sesi induk stok opname resmi ditutup", opname)
+}

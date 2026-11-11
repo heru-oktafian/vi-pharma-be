@@ -211,6 +211,15 @@ func SetupRoutes(
 	inv.Get("/opnames", inventoryHandler.ListOpnames)
 	inv.Get("/opnames/:id", inventoryHandler.GetOpnameDetail)
 
+	// 7.7 Collaborative Multi-User Opname (Sistem Setor per Rak)
+	inv.Get("/opnames/parent/active", inventoryHandler.GetActiveParentOpname)
+	inv.Post("/opnames/parent", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.CreateParentOpnameSession)
+	inv.Post("/opnames/parent/:id/close", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.CloseParentOpnameSession)
+	inv.Get("/opnames/parent/:id/racks/:rack_id", inventoryHandler.GetOpnameRackDetail)
+	inv.Post("/opnames/parent/:id/submit-rack", inventoryHandler.SubmitRackCount)
+	inv.Post("/opnames/parent/:id/approve-rack/:rack_id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.ApproveRackCount)
+	inv.Post("/opnames/parent/:id/reject-rack/:rack_id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RolePharmacist), inventoryHandler.RejectRackCount)
+
 	// -------------------------------------------------------------
 	// 8. Procurement & Purchase Orders (Pengadaan & Surat Pesanan)
 	// -------------------------------------------------------------

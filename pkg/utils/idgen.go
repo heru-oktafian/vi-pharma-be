@@ -106,6 +106,11 @@ func GenerateStockOpnameItemID() string {
 	return generateIDWithPrefix("SOI")
 }
 
+// GenerateStockOpnameRackID generates a 15-character unique identifier for opname racks (prefix "SOR")
+func GenerateStockOpnameRackID() string {
+	return generateIDWithPrefix("SOR")
+}
+
 // GeneratePurchaseOrderID generates a 15-character unique identifier for purchase orders / SP (prefix "POR")
 func GeneratePurchaseOrderID() string {
 	return generateIDWithPrefix("POR")
