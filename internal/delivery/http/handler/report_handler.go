@@ -29,7 +29,6 @@ func (h *ReportHandler) GetStaffPerformance(c *fiber.Ctx) error {
 	if dailyBonusReward == 0 {
 		dailyBonusReward, _ = strconv.ParseFloat(c.Query("bonus_reward", "0"), 64)
 	}
-	bonusPool, _ := strconv.ParseFloat(c.Query("bonus_pool", "0"), 64)
 
 	filter := domain.ReportFilter{
 		BranchID:          branchID,
@@ -37,7 +36,6 @@ func (h *ReportHandler) GetStaffPerformance(c *fiber.Ctx) error {
 		EndDate:           endDate,
 		DailyMarginTarget: dailyMarginTarget,
 		DailyBonusReward:  dailyBonusReward,
-		BonusPoolBudget:   bonusPool,
 	}
 
 	report, err := h.reportUsecase.GetStaffPerformanceReport(c.Context(), filter)

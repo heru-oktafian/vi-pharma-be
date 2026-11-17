@@ -34,7 +34,6 @@ type StaffPerformanceItem struct {
 	DailyTargetMargin          float64                 `json:"daily_target_margin"`         // Nilai target margin harian (Rp)
 	DailyBonusReward           float64                 `json:"daily_bonus_reward"`          // Bonus flat per hari jika target tercapai (Rp)
 	TotalBonus                 float64                 `json:"total_bonus"`                 // DaysAchieved * DailyBonusReward (Rp)
-	EstimatedBonus             float64                 `json:"estimated_bonus"`            // Backward compatibility alias
 	DailyBreakdown             []DailyStaffAchievement `json:"daily_breakdown"`             // Rincian performa per hari
 }
 
@@ -51,8 +50,6 @@ type StaffPerformanceReportResponse struct {
 	DailyMarginTarget   float64                `json:"daily_margin_target"`   // Target margin harian per karyawan (Rp)
 	DailyBonusReward    float64                `json:"daily_bonus_reward"`    // Bonus flat harian jika target tercapai (Rp)
 	TotalBonusPaid      float64                `json:"total_bonus_paid"`      // Akumulasi seluruh bonus yang tercapai di cabang
-	BonusPoolBudget     float64                `json:"bonus_pool_budget"`     // Backward compatibility
-	TargetMarginPercent float64                `json:"target_margin_percent"` // Backward compatibility
 	StaffContributions  []StaffPerformanceItem `json:"staff_contributions"`
 }
 
@@ -108,13 +105,11 @@ type SalesSummaryReportResponse struct {
 }
 
 type ReportFilter struct {
-	BranchID            string  `json:"branch_id"`
-	StartDate           string  `json:"start_date"`
-	EndDate             string  `json:"end_date"`
-	DailyMarginTarget   float64 `json:"daily_margin_target"`
-	DailyBonusReward    float64 `json:"daily_bonus_reward"`
-	BonusPoolBudget     float64 `json:"bonus_pool_budget"`
-	TargetMarginPercent float64 `json:"target_margin_percent"`
+	BranchID          string  `json:"branch_id"`
+	StartDate         string  `json:"start_date"`
+	EndDate           string  `json:"end_date"`
+	DailyMarginTarget float64 `json:"daily_margin_target"`
+	DailyBonusReward  float64 `json:"daily_bonus_reward"`
 }
 
 // SIPNAPInDetail represents incoming batch deliveries from PBF for SIPNAP Kemenkes

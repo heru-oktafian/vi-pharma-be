@@ -93,24 +93,3 @@ func RequireBranch(allowedBranches ...string) fiber.Handler {
 	}
 }
 
-// RequireDivision ensures the user has selected an active division session
-func RequireDivision(allowedDivisions ...string) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		division, ok := c.Locals("division").(string)
-		if !ok || division == "" {
-			return handler.ErrorResponse(c, fiber.StatusForbidden, "Access forbidden: please select a division first", nil)
-		}
-
-		if len(allowedDivisions) == 0 {
-			return c.Next()
-		}
-
-		for _, allowed := range allowedDivisions {
-			if allowed == division {
-				return c.Next()
-			}
-		}
-
-		return handler.ErrorResponse(c, fiber.StatusForbidden, "Access forbidden: division mismatch", nil)
-	}
-}

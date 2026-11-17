@@ -229,7 +229,6 @@ func (r *reportRepository) GetStaffPerformanceReport(ctx context.Context, filter
 
 		item.DaysAchieved = daysAchieved
 		item.TotalBonus = float64(daysAchieved) * dailyBonusReward
-		item.EstimatedBonus = item.TotalBonus
 		item.DailyBreakdown = dailyList
 	}
 
@@ -290,8 +289,6 @@ func (r *reportRepository) GetStaffPerformanceReport(ctx context.Context, filter
 		DailyMarginTarget:   dailyMarginTarget,
 		DailyBonusReward:    dailyBonusReward,
 		TotalBonusPaid:      totalBonusPaid,
-		BonusPoolBudget:     filter.BonusPoolBudget,
-		TargetMarginPercent: filter.TargetMarginPercent,
 		StaffContributions:  staffList,
 	}, nil
 }
