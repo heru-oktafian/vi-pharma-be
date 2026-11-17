@@ -413,6 +413,21 @@ func (h *InventoryHandler) GetFefoAlerts(c *fiber.Ctx) error {
 	return SuccessResponse(c, fiber.StatusOK, "Data monitoring kadaluarsa FEFO berhasil diambil", alerts)
 }
 
+// GetLowStockAlerts handles GET /api/v1/inventory/low-stock-alerts
+func (h *InventoryHandler) GetLowStockAlerts(c *fiber.Ctx) error {
+	branchID := getBranchID(c)
+	if branchID == "" {
+		return ErrorResponse(c, fiber.StatusBadRequest, "Branch ID wajib ditentukan", nil)
+	}
+
+	alerts, err := h.invUsecase.GetLowStockAlerts(c.Context(), branchID)
+	if err != nil {
+		return ErrorResponse(c, fiber.StatusInternalServerError, "Gagal mengambil data peringatan stok minimum", err)
+	}
+
+	return SuccessResponse(c, fiber.StatusOK, "Data peringatan stok minimum berhasil diambil", alerts)
+}
+
 // -------------------------------------------------------------
 // Rolling Cycle Count (Stok Opname Bergulir)
 // -------------------------------------------------------------

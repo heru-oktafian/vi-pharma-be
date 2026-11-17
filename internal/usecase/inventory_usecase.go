@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"sort"
 	"time"
 
 	"pharma-be/internal/domain"
@@ -693,6 +694,71 @@ func (u *inventoryUsecase) GetFefoAlerts(ctx context.Context, branchID string) (
 	}
 
 	return alerts, nil
+}
+
+func (u *inventoryUsecase) GetLowStockAlerts(ctx context.Context, branchID string) (*domain.LowStockSummaryResponse, error) {
+	summaries, err := u.invRepo.GetStockSummaryByBranch(ctx, branchID, "")
+	if err != nil {
+		return nil, err
+	}
+
+	var alertItems []domain.LowStockAlertItem
+	var oosCount, lowCount int
+
+	for _, s := range summaries {
+		// Trigger alert if total stock is less than or equal to configured min_stock
+		if s.TotalStock <= float64(s.MinStock) {
+			status := "MINIMUM_REACHED"
+			if s.TotalStock <= 0 {
+				status = "OUT_OF_STOCK"
+				oosCount++
+			} else {
+				lowCount++
+			}
+
+			deficit := float64(s.MinStock) - s.TotalStock
+			if deficit < 0 {
+				deficit = 0
+			}
+
+			alertItems = append(alertItems, domain.LowStockAlertItem{
+				MedicineID:     s.MedicineID,
+				ItemCode:       s.ItemCode,
+				Barcode:        s.Barcode,
+				Name:           s.Name,
+				GenericName:    s.GenericName,
+				Indication:     s.Indication,
+				BaseUnitName:   s.BaseUnitName,
+				SellPrice:      s.SellPrice,
+				TotalWarehouse: s.TotalWarehouse,
+				TotalShelf:     s.TotalShelf,
+				TotalStock:     s.TotalStock,
+				MinStock:       s.MinStock,
+				DeficitQty:     deficit,
+				StockStatus:    status,
+				BatchesCount:   len(s.Batches),
+				Batches:        s.Batches,
+			})
+		}
+	}
+
+	// Sort: OUT_OF_STOCK first, then by DeficitQty DESC, then Name ASC
+	sort.Slice(alertItems, func(i, j int) bool {
+		if alertItems[i].StockStatus != alertItems[j].StockStatus {
+			return alertItems[i].StockStatus == "OUT_OF_STOCK"
+		}
+		if alertItems[i].DeficitQty != alertItems[j].DeficitQty {
+			return alertItems[i].DeficitQty > alertItems[j].DeficitQty
+		}
+		return alertItems[i].Name < alertItems[j].Name
+	})
+
+	return &domain.LowStockSummaryResponse{
+		TotalAlerts:     len(alertItems),
+		OutOfStockCount: oosCount,
+		LowStockCount:   lowCount,
+		Items:           alertItems,
+	}, nil
 }
 
 // -------------------------------------------------------------

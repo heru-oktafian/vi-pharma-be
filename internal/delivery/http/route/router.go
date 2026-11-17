@@ -188,8 +188,9 @@ func SetupRoutes(
 	// 7.2 Digital Stock Card (Buku Mutasi Barang)
 	inv.Get("/stock-card/:medicineId", inventoryHandler.GetStockCard)
 
-	// 7.3 FEFO & Expiration Date Watcher
+	// 7.3 FEFO & Expiration Date Watcher + Low Stock Alerts
 	inv.Get("/fefo-alerts", inventoryHandler.GetFefoAlerts)
+	inv.Get("/low-stock-alerts", inventoryHandler.GetLowStockAlerts)
 
 	// 7.4 Internal Stock Transfer (Refill Rak & Return Gudang)
 	inv.Post("/refill-shelf", inventoryHandler.RefillShelf)

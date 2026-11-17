@@ -354,6 +354,32 @@ type FefoAlertItem struct {
 	AlertStatus  string    `json:"alert_status"` // EXPIRED, CRITICAL (<90d), WARNING (<180d), SAFE
 }
 
+type LowStockAlertItem struct {
+	MedicineID     string           `json:"medicine_id"`
+	ItemCode       string           `json:"item_code"`
+	Barcode        string           `json:"barcode"`
+	Name           string           `json:"name"`
+	GenericName    string           `json:"generic_name"`
+	Indication     string           `json:"indication"`
+	BaseUnitName   string           `json:"base_unit_name"`
+	SellPrice      float64          `json:"sell_price"`
+	TotalWarehouse float64          `json:"total_warehouse"`
+	TotalShelf     float64          `json:"total_shelf"`
+	TotalStock     float64          `json:"total_stock"`
+	MinStock       int              `json:"min_stock"`
+	DeficitQty     float64          `json:"deficit_qty"` // MinStock - TotalStock
+	StockStatus    string           `json:"stock_status"` // OUT_OF_STOCK, MINIMUM_REACHED
+	BatchesCount   int              `json:"batches_count"`
+	Batches        []*MedicineBatch `json:"batches,omitempty"`
+}
+
+type LowStockSummaryResponse struct {
+	TotalAlerts     int                 `json:"total_alerts"`
+	OutOfStockCount int                 `json:"out_of_stock_count"`
+	LowStockCount   int                 `json:"low_stock_count"`
+	Items           []LowStockAlertItem `json:"items"`
+}
+
 // Accounts Payable (Hutang Pembelian) DTOs
 type CreateInvoicePaymentRequest struct {
 	PaymentDate     string  `json:"payment_date" validate:"required"` // Format: YYYY-MM-DD
@@ -457,6 +483,7 @@ type InventoryUsecase interface {
 	ListStockSummaries(ctx context.Context, branchID string, search string) ([]StockSummaryResponse, error)
 	GetStockCard(ctx context.Context, branchID, medicineID string, startDate, endDate string) ([]*StockMutation, error)
 	GetFefoAlerts(ctx context.Context, branchID string) ([]FefoAlertItem, error)
+	GetLowStockAlerts(ctx context.Context, branchID string) (*LowStockSummaryResponse, error)
 
 	CreateOpnameSession(ctx context.Context, branchID, userID string, req *CreateOpnameSessionRequest) (*StockOpname, error)
 	SubmitOpnameSession(ctx context.Context, branchID, userID, opnameID string, req *SubmitOpnameRequest) (*StockOpname, error)
